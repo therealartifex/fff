@@ -1,0 +1,16 @@
+# started on Tue Feb 10 01:55:42 2026
+
+
+ Performance counter stats for 'taskset -c 0-15 ./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt':
+
+           8509014      LLC-loads                                                               (50.01%)
+           7560010      LLC-load-misses                  #   88.85% of all LL-cache accesses    (50.01%)
+            650346      LLC-stores                                                              (49.99%)
+            260940      LLC-store-misses                                                        (49.99%)
+
+       0.624612221 seconds time elapsed
+
+       7.837095000 seconds user
+       0.346959000 seconds sys
+
+
