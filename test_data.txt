@@ -1,0 +1,5 @@
+https://example.com:user@test.com:password123
+https://google.com:admin@example.org:secret456
+http://site.net:test@mail.com:mypassword
+ftp://files.org:user@domain.com:testpass
+https://secure.example.com:admin@secure.net:adminpass

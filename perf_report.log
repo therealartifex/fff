@@ -1,0 +1,1133 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 37K of event 'cycles:P'
+# Event count (approx.): 23212754580
+#
+# Children      Self  Command   Shared Object         Symbol                                                                                                                                                                                                                                       
+# ........  ........  ........  ....................  .............................................................................................................................................................................................................................................
+#
+    83.33%     4.91%  fff_para  fff_para              [.] process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+            |          
+            |--80.99%--process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+            |          |          
+            |          |--13.21%--0x7217df39834a
+            |          |          
+            |          |--13.03%--0x7217df398344
+            |          |          
+            |          |--12.14%--search_field_all(char const*, unsigned long, char const*, unsigned long, unsigned int const*)
+            |          |          
+            |          |--11.85%--0x7217df39835e
+            |          |          
+            |          |--9.19%--0x7217df398365
+            |          |          
+            |          |--7.72%--0x7217df398377
+            |          |          
+            |          |--2.26%--0x7217df398373
+            |          |          
+            |          |--1.75%--0x7217df398369
+            |          |          
+            |          |--1.57%--0x7217df39837d
+            |          |          
+            |          |--1.57%--0x7217df398358
+            |          |          
+            |          |--1.47%--memcmp@plt
+            |          |          
+            |          |--0.96%--0x7217df398370
+            |          |          
+            |           --0.90%--0x7217df398340
+            |          
+             --2.32%--0x7217df329c6c
+                       0x7217df29caa4
+                       0x7217df6ecdb4
+                       |          
+                        --2.23%--process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+
+    17.80%     0.00%  fff_para  libc.so.6             [.] 0x00007217df329c6c
+            |
+            ---0x7217df329c6c
+               |          
+                --17.79%--0x7217df29caa4
+                          0x7217df6ecdb4
+                          |          
+                          |--15.01%--process_file_range(char const*, unsigned long, unsigned long, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned int const*)
+                          |          |          
+                          |           --1.41%--asm_exc_page_fault
+                          |                     |          
+                          |                      --1.25%--exc_page_fault
+                          |                                |          
+                          |                                 --1.22%--do_user_addr_fault
+                          |                                           |          
+                          |                                            --1.02%--handle_mm_fault
+                          |                                                      |          
+                          |                                                       --0.96%--__handle_mm_fault
+                          |                                                                 |          
+                          |                                                                  --0.88%--handle_pte_fault
+                          |                                                                            |          
+                          |                                                                             --0.76%--do_fault
+                          |                                                                                       |          
+                          |                                                                                        --0.75%--do_read_fault
+                          |                                                                                                  |          
+                          |                                                                                                   --0.73%--filemap_map_pages
+                          |          
+                           --2.47%--process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+
+    17.79%     0.00%  fff_para  libc.so.6             [.] 0x00007217df29caa4
+            |
+            ---0x7217df29caa4
+               0x7217df6ecdb4
+               |          
+               |--15.01%--process_file_range(char const*, unsigned long, unsigned long, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned int const*)
+               |          |          
+               |           --1.41%--asm_exc_page_fault
+               |                     |          
+               |                      --1.25%--exc_page_fault
+               |                                |          
+               |                                 --1.22%--do_user_addr_fault
+               |                                           |          
+               |                                            --1.02%--handle_mm_fault
+               |                                                      |          
+               |                                                       --0.96%--__handle_mm_fault
+               |                                                                 |          
+               |                                                                  --0.88%--handle_pte_fault
+               |                                                                            |          
+               |                                                                             --0.76%--do_fault
+               |                                                                                       |          
+               |                                                                                        --0.75%--do_read_fault
+               |                                                                                                  |          
+               |                                                                                                   --0.73%--filemap_map_pages
+               |          
+                --2.47%--process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+
+    17.79%     0.00%  fff_para  libstdc++.so.6.0.33   [.] 0x00007217df6ecdb4
+            |
+            ---0x7217df6ecdb4
+               |          
+               |--15.01%--process_file_range(char const*, unsigned long, unsigned long, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned int const*)
+               |          |          
+               |           --1.41%--asm_exc_page_fault
+               |                     |          
+               |                      --1.25%--exc_page_fault
+               |                                |          
+               |                                 --1.22%--do_user_addr_fault
+               |                                           |          
+               |                                            --1.02%--handle_mm_fault
+               |                                                      |          
+               |                                                       --0.96%--__handle_mm_fault
+               |                                                                 |          
+               |                                                                  --0.88%--handle_pte_fault
+               |                                                                            |          
+               |                                                                             --0.76%--do_fault
+               |                                                                                       |          
+               |                                                                                        --0.75%--do_read_fault
+               |                                                                                                  |          
+               |                                                                                                   --0.73%--filemap_map_pages
+               |          
+                --2.47%--process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+
+    15.23%    13.14%  fff_para  fff_para              [.] process_file_range(char const*, unsigned long, unsigned long, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned int const*)
+            |          
+            |--13.14%--0x7217df329c6c
+            |          0x7217df29caa4
+            |          0x7217df6ecdb4
+            |          |          
+            |           --12.92%--process_file_range(char const*, unsigned long, unsigned long, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned int const*)
+            |          
+             --2.09%--process_file_range(char const*, unsigned long, unsigned long, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, unsigned int const*)
+                       |          
+                        --1.26%--asm_exc_page_fault
+                                  |          
+                                   --1.25%--exc_page_fault
+                                             |          
+                                              --1.22%--do_user_addr_fault
+                                                        |          
+                                                         --1.02%--handle_mm_fault
+                                                                   |          
+                                                                    --0.96%--__handle_mm_fault
+                                                                              |          
+                                                                               --0.88%--handle_pte_fault
+                                                                                         |          
+                                                                                          --0.76%--do_fault
+                                                                                                    |          
+                                                                                                     --0.75%--do_read_fault
+                                                                                                               |          
+                                                                                                                --0.73%--filemap_map_pages
+
+    13.32%    13.23%  fff_para  fff_para              [.] search_field_all(char const*, unsigned long, char const*, unsigned long, unsigned int const*)
+            |          
+             --13.10%--process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+                       |          
+                       |--12.06%--search_field_all(char const*, unsigned long, char const*, unsigned long, unsigned int const*)
+                       |          
+                        --0.73%--memcmp@plt
+
+    13.21%     0.00%  fff_para  libc.so.6             [.] 0x00007217df39834a
+            |
+            ---0x7217df39834a
+
+    13.13%    13.13%  fff_para  libc.so.6             [.] 0x0000000000198344
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               0x7217df39834a
+
+    13.03%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398344
+            |
+            ---0x7217df398344
+
+    13.01%    13.01%  fff_para  libc.so.6             [.] 0x0000000000198340
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               0x7217df398344
+
+    11.85%     0.00%  fff_para  libc.so.6             [.] 0x00007217df39835e
+            |
+            ---0x7217df39835e
+
+    11.80%    11.80%  fff_para  libc.so.6             [.] 0x0000000000198358
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               0x7217df39835e
+
+     9.19%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398365
+            |
+            ---0x7217df398365
+
+     9.15%     9.15%  fff_para  libc.so.6             [.] 0x000000000019835e
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               |          
+                --9.15%--0x7217df398365
+
+     7.72%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398377
+            |
+            ---0x7217df398377
+
+     7.68%     7.68%  fff_para  libc.so.6             [.] 0x0000000000198373
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               0x7217df398377
+
+     2.33%     1.60%  fff_para  fff_para              [.] memcmp@plt
+            |          
+            |--1.60%--process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+            |          |          
+            |          |--0.86%--0x7217df398340
+            |          |          
+            |           --0.74%--memcmp@plt
+            |          
+             --0.73%--memcmp@plt
+
+     2.26%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398373
+            |
+            ---0x7217df398373
+
+     2.25%     2.25%  fff_para  libc.so.6             [.] 0x0000000000198370
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               |          
+                --2.24%--0x7217df398373
+
+     1.75%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398369
+            |
+            ---0x7217df398369
+
+     1.74%     1.74%  fff_para  libc.so.6             [.] 0x0000000000198365
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               |          
+                --1.74%--0x7217df398369
+
+     1.63%     0.01%  fff_para  [kernel.kallsyms]     [k] asm_exc_page_fault
+            |          
+             --1.62%--asm_exc_page_fault
+                       |          
+                        --1.40%--exc_page_fault
+                                  |          
+                                   --1.37%--do_user_addr_fault
+                                             |          
+                                              --1.13%--handle_mm_fault
+                                                        |          
+                                                         --1.07%--__handle_mm_fault
+                                                                   |          
+                                                                    --0.99%--handle_pte_fault
+                                                                              |          
+                                                                               --0.76%--do_fault
+                                                                                         |          
+                                                                                          --0.75%--do_read_fault
+                                                                                                    |          
+                                                                                                     --0.73%--filemap_map_pages
+
+     1.57%     0.00%  fff_para  libc.so.6             [.] 0x00007217df39837d
+            |
+            ---0x7217df39837d
+
+     1.57%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398358
+            |
+            ---0x7217df398358
+
+     1.56%     1.56%  fff_para  libc.so.6             [.] 0x000000000019837b
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               0x7217df39837d
+
+     1.56%     1.56%  fff_para  libc.so.6             [.] 0x0000000000198354
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               0x7217df398358
+
+     1.40%     0.01%  fff_para  [kernel.kallsyms]     [k] exc_page_fault
+            |          
+             --1.40%--exc_page_fault
+                       |          
+                        --1.37%--do_user_addr_fault
+                                  |          
+                                   --1.13%--handle_mm_fault
+                                             |          
+                                              --1.07%--__handle_mm_fault
+                                                        |          
+                                                         --0.99%--handle_pte_fault
+                                                                   |          
+                                                                    --0.76%--do_fault
+                                                                              |          
+                                                                               --0.75%--do_read_fault
+                                                                                         |          
+                                                                                          --0.73%--filemap_map_pages
+
+     1.38%     0.01%  fff_para  [kernel.kallsyms]     [k] entry_SYSCALL_64_after_hwframe
+            |          
+             --1.37%--entry_SYSCALL_64_after_hwframe
+                       |          
+                        --1.37%--do_syscall_64
+                                  |          
+                                   --1.37%--x64_sys_call
+                                             |          
+                                              --1.25%--__x64_sys_munmap
+                                                        __vm_munmap
+                                                        do_vmi_munmap
+                                                        do_vmi_align_munmap
+                                                        |          
+                                                         --1.25%--unmap_region
+                                                                   |          
+                                                                    --1.21%--unmap_vmas
+                                                                              unmap_single_vma
+                                                                              unmap_page_range
+                                                                              zap_pmd_range.isra.0
+                                                                              |          
+                                                                               --1.07%--zap_pte_range
+
+     1.37%     0.00%  fff_para  [kernel.kallsyms]     [k] x64_sys_call
+            |          
+             --1.37%--x64_sys_call
+                       |          
+                        --1.25%--__x64_sys_munmap
+                                  __vm_munmap
+                                  do_vmi_munmap
+                                  do_vmi_align_munmap
+                                  |          
+                                   --1.25%--unmap_region
+                                             |          
+                                              --1.21%--unmap_vmas
+                                                        unmap_single_vma
+                                                        unmap_page_range
+                                                        zap_pmd_range.isra.0
+                                                        |          
+                                                         --1.07%--zap_pte_range
+
+     1.37%     0.00%  fff_para  [kernel.kallsyms]     [k] do_syscall_64
+            |
+            ---do_syscall_64
+               |          
+                --1.37%--x64_sys_call
+                          |          
+                           --1.25%--__x64_sys_munmap
+                                     __vm_munmap
+                                     do_vmi_munmap
+                                     do_vmi_align_munmap
+                                     |          
+                                      --1.25%--unmap_region
+                                                |          
+                                                 --1.21%--unmap_vmas
+                                                           unmap_single_vma
+                                                           unmap_page_range
+                                                           zap_pmd_range.isra.0
+                                                           |          
+                                                            --1.07%--zap_pte_range
+
+     1.37%     0.00%  fff_para  [kernel.kallsyms]     [k] do_user_addr_fault
+            |          
+             --1.36%--do_user_addr_fault
+                       |          
+                        --1.13%--handle_mm_fault
+                                  |          
+                                   --1.07%--__handle_mm_fault
+                                             |          
+                                              --0.99%--handle_pte_fault
+                                                        |          
+                                                         --0.76%--do_fault
+                                                                   |          
+                                                                    --0.75%--do_read_fault
+                                                                              |          
+                                                                               --0.73%--filemap_map_pages
+
+     1.25%     0.00%  fff_para  [kernel.kallsyms]     [k] do_vmi_munmap
+            |
+            ---do_vmi_munmap
+               do_vmi_align_munmap
+               |          
+                --1.25%--unmap_region
+                          |          
+                           --1.21%--unmap_vmas
+                                     unmap_single_vma
+                                     unmap_page_range
+                                     zap_pmd_range.isra.0
+                                     |          
+                                      --1.07%--zap_pte_range
+
+     1.25%     0.00%  fff_para  [kernel.kallsyms]     [k] do_vmi_align_munmap
+            |
+            ---do_vmi_align_munmap
+               |          
+                --1.25%--unmap_region
+                          |          
+                           --1.21%--unmap_vmas
+                                     unmap_single_vma
+                                     unmap_page_range
+                                     zap_pmd_range.isra.0
+                                     |          
+                                      --1.07%--zap_pte_range
+
+     1.25%     0.00%  fff_para  libc.so.6             [.] __munmap
+            |
+            ---__munmap
+               |          
+                --1.25%--entry_SYSCALL_64_after_hwframe
+                          do_syscall_64
+                          x64_sys_call
+                          __x64_sys_munmap
+                          __vm_munmap
+                          do_vmi_munmap
+                          do_vmi_align_munmap
+                          |          
+                           --1.25%--unmap_region
+                                     |          
+                                      --1.21%--unmap_vmas
+                                                unmap_single_vma
+                                                unmap_page_range
+                                                zap_pmd_range.isra.0
+                                                |          
+                                                 --1.07%--zap_pte_range
+
+     1.25%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_munmap
+            |
+            ---__x64_sys_munmap
+               __vm_munmap
+               do_vmi_munmap
+               do_vmi_align_munmap
+               |          
+                --1.25%--unmap_region
+                          |          
+                           --1.21%--unmap_vmas
+                                     unmap_single_vma
+                                     unmap_page_range
+                                     zap_pmd_range.isra.0
+                                     |          
+                                      --1.07%--zap_pte_range
+
+     1.25%     0.00%  fff_para  [kernel.kallsyms]     [k] __vm_munmap
+            |
+            ---__vm_munmap
+               do_vmi_munmap
+               do_vmi_align_munmap
+               |          
+                --1.25%--unmap_region
+                          |          
+                           --1.21%--unmap_vmas
+                                     unmap_single_vma
+                                     unmap_page_range
+                                     zap_pmd_range.isra.0
+                                     |          
+                                      --1.07%--zap_pte_range
+
+     1.25%     0.00%  fff_para  [kernel.kallsyms]     [k] unmap_region
+            |
+            ---unmap_region
+               |          
+                --1.21%--unmap_vmas
+                          unmap_single_vma
+                          unmap_page_range
+                          zap_pmd_range.isra.0
+                          |          
+                           --1.07%--zap_pte_range
+
+     1.23%     0.00%  fff_para  [unknown]             [k] 0x0000000000000031
+            |
+            ---0x31
+               main
+               |          
+                --1.20%--__munmap
+                          entry_SYSCALL_64_after_hwframe
+                          do_syscall_64
+                          x64_sys_call
+                          __x64_sys_munmap
+                          __vm_munmap
+                          do_vmi_munmap
+                          do_vmi_align_munmap
+                          unmap_region
+                          |          
+                           --1.19%--unmap_vmas
+                                     unmap_single_vma
+                                     unmap_page_range
+                                     zap_pmd_range.isra.0
+                                     |          
+                                      --1.05%--zap_pte_range
+
+     1.23%     0.00%  fff_para  fff_para              [.] main
+            |
+            ---main
+               |          
+                --1.20%--__munmap
+                          entry_SYSCALL_64_after_hwframe
+                          do_syscall_64
+                          x64_sys_call
+                          __x64_sys_munmap
+                          __vm_munmap
+                          do_vmi_munmap
+                          do_vmi_align_munmap
+                          unmap_region
+                          |          
+                           --1.19%--unmap_vmas
+                                     unmap_single_vma
+                                     unmap_page_range
+                                     zap_pmd_range.isra.0
+                                     |          
+                                      --1.05%--zap_pte_range
+
+     1.22%     0.00%  fff_para  [kernel.kallsyms]     [k] zap_pmd_range.isra.0
+            |          
+             --1.22%--zap_pmd_range.isra.0
+                       |          
+                        --1.07%--zap_pte_range
+
+     1.22%     0.00%  fff_para  [kernel.kallsyms]     [k] unmap_single_vma
+            |
+            ---unmap_single_vma
+               unmap_page_range
+               zap_pmd_range.isra.0
+               |          
+                --1.07%--zap_pte_range
+
+     1.22%     0.00%  fff_para  [kernel.kallsyms]     [k] unmap_page_range
+            |
+            ---unmap_page_range
+               zap_pmd_range.isra.0
+               |          
+                --1.07%--zap_pte_range
+
+     1.22%     0.00%  fff_para  [kernel.kallsyms]     [k] unmap_vmas
+            |
+            ---unmap_vmas
+               unmap_single_vma
+               unmap_page_range
+               zap_pmd_range.isra.0
+               |          
+                --1.07%--zap_pte_range
+
+     1.13%     0.03%  fff_para  [kernel.kallsyms]     [k] handle_mm_fault
+            |          
+             --1.10%--handle_mm_fault
+                       |          
+                        --1.07%--__handle_mm_fault
+                                  |          
+                                   --0.99%--handle_pte_fault
+                                             |          
+                                              --0.76%--do_fault
+                                                        |          
+                                                         --0.75%--do_read_fault
+                                                                   |          
+                                                                    --0.73%--filemap_map_pages
+
+     1.08%     0.35%  fff_para  [kernel.kallsyms]     [k] zap_pte_range
+            |          
+             --0.73%--zap_pte_range
+
+     1.07%     0.07%  fff_para  [kernel.kallsyms]     [k] __handle_mm_fault
+            |          
+             --0.99%--__handle_mm_fault
+                       |          
+                        --0.99%--handle_pte_fault
+                                  |          
+                                   --0.76%--do_fault
+                                             |          
+                                              --0.75%--do_read_fault
+                                                        |          
+                                                         --0.73%--filemap_map_pages
+
+     0.99%     0.02%  fff_para  [kernel.kallsyms]     [k] handle_pte_fault
+            |          
+             --0.97%--handle_pte_fault
+                       |          
+                        --0.76%--do_fault
+                                  |          
+                                   --0.75%--do_read_fault
+                                             |          
+                                              --0.73%--filemap_map_pages
+
+     0.96%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398370
+            |
+            ---0x7217df398370
+
+     0.95%     0.95%  fff_para  libc.so.6             [.] 0x000000000019836b
+            |
+            ---process_line(char const*, unsigned long, unsigned long, char const*, unsigned long, unsigned int const*)
+               0x7217df398370
+
+     0.90%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398340
+            |
+            ---0x7217df398340
+
+     0.76%     0.00%  fff_para  [kernel.kallsyms]     [k] do_fault
+            |          
+             --0.76%--do_fault
+                       |          
+                        --0.75%--do_read_fault
+                                  |          
+                                   --0.73%--filemap_map_pages
+
+     0.76%     0.00%  fff_para  [kernel.kallsyms]     [k] do_read_fault
+            |          
+             --0.75%--do_read_fault
+                       |          
+                        --0.73%--filemap_map_pages
+
+     0.73%     0.20%  fff_para  [kernel.kallsyms]     [k] filemap_map_pages
+            |          
+             --0.53%--filemap_map_pages
+
+     0.52%     0.27%  fff_para  [kernel.kallsyms]     [k] folio_remove_rmap_ptes
+     0.44%     0.00%  fff_para  [kernel.kallsyms]     [k] asm_sysvec_apic_timer_interrupt
+     0.42%     0.01%  fff_para  [kernel.kallsyms]     [k] sysvec_apic_timer_interrupt
+     0.41%     0.41%  fff_para  [kernel.kallsyms]     [k] __irqentry_text_end
+     0.37%     0.01%  fff_para  [kernel.kallsyms]     [k] __sysvec_apic_timer_interrupt
+     0.37%     0.00%  fff_para  [kernel.kallsyms]     [k] hrtimer_interrupt
+     0.31%     0.01%  fff_para  [kernel.kallsyms]     [k] __hrtimer_run_queues
+     0.30%     0.00%  fff_para  [kernel.kallsyms]     [k] tick_nohz_highres_handler
+     0.30%     0.03%  fff_para  [kernel.kallsyms]     [k] set_pte_range
+     0.29%     0.00%  fff_para  [kernel.kallsyms]     [k] tick_sched_handle
+     0.29%     0.00%  fff_para  [kernel.kallsyms]     [k] update_process_times
+     0.28%     0.08%  fff_para  [kernel.kallsyms]     [k] __lruvec_stat_mod_folio
+     0.28%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398bed
+     0.27%     0.00%  fff_para  [kernel.kallsyms]     [k] scheduler_tick
+     0.22%     0.08%  fff_para  [kernel.kallsyms]     [k] next_uptodate_folio
+     0.21%     0.15%  fff_para  [kernel.kallsyms]     [k] folio_add_file_rmap_ptes
+     0.19%     0.01%  fff_para  [kernel.kallsyms]     [k] do_anonymous_page
+     0.18%     0.03%  fff_para  [kernel.kallsyms]     [k] __mod_lruvec_state
+     0.18%     0.00%  fff_para  [kernel.kallsyms]     [k] tlb_batch_pages_flush
+     0.18%     0.18%  fff_para  [kernel.kallsyms]     [k] error_entry
+     0.16%     0.00%  fff_para  [kernel.kallsyms]     [k] tlb_flush_mmu
+     0.13%     0.11%  fff_para  [kernel.kallsyms]     [k] __mod_memcg_lruvec_state
+     0.13%     0.02%  fff_para  [kernel.kallsyms]     [k] free_pages_and_swap_cache
+     0.12%     0.03%  fff_para  [kernel.kallsyms]     [k] xas_find
+     0.12%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_event_task_tick
+     0.11%     0.00%  fff_para  [unknown]             [.] 0x000072172c000c40
+     0.11%     0.11%  fff_para  [kernel.kallsyms]     [k] native_irq_return_iret
+     0.11%     0.10%  fff_para  [kernel.kallsyms]     [k] perf_adjust_freq_unthr_context
+     0.10%     0.09%  fff_para  [kernel.kallsyms]     [k] release_pages
+     0.10%     0.03%  fff_para  libc.so.6             [.] _IO_fwrite
+     0.10%     0.05%  fff_para  [kernel.kallsyms]     [k] lock_vma_under_rcu
+     0.09%     0.00%  fff_para  [unknown]             [.] 0000000000000000
+     0.08%     0.05%  fff_para  [kernel.kallsyms]     [k] xas_load
+     0.08%     0.00%  fff_para  [kernel.kallsyms]     [k] task_tick_fair
+     0.07%     0.06%  fff_para  [kernel.kallsyms]     [k] free_swap_cache
+     0.07%     0.07%  fff_para  [kernel.kallsyms]     [k] down_read_trylock
+     0.07%     0.00%  fff_para  libc.so.6             [.] _IO_file_xsputn
+     0.07%     0.07%  fff_para  [kernel.kallsyms]     [k] sync_regs
+     0.07%     0.07%  fff_para  libc.so.6             [.] 0x0000000000198bed
+     0.06%     0.00%  fff_para  libc.so.6             [.] _IO_do_write
+     0.06%     0.00%  fff_para  libc.so.6             [.] _IO_file_write
+     0.06%     0.00%  fff_para  libc.so.6             [.] write
+     0.06%     0.06%  fff_para  libc.so.6             [.] 0x000000000019834f
+     0.06%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398354
+     0.06%     0.00%  fff_para  [kernel.kallsyms]     [k] alloc_pages_mpol
+     0.06%     0.01%  fff_para  [kernel.kallsyms]     [k] __alloc_pages
+     0.06%     0.05%  fff_para  [kernel.kallsyms]     [k] __rcu_read_unlock
+     0.06%     0.06%  fff_para  [kernel.kallsyms]     [k] mm_counter
+     0.06%     0.01%  fff_para  [kernel.kallsyms]     [k] __mem_cgroup_charge
+     0.05%     0.05%  fff_para  [kernel.kallsyms]     [k] __mod_node_page_state
+     0.05%     0.00%  fff_para  [kernel.kallsyms]     [k] alloc_anon_folio
+     0.05%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_write
+     0.05%     0.00%  fff_para  [kernel.kallsyms]     [k] ksys_write
+     0.05%     0.05%  fff_para  [kernel.kallsyms]     [k] mas_walk
+     0.05%     0.05%  fff_para  [kernel.kallsyms]     [k] up_read
+     0.05%     0.00%  fff_para  [kernel.kallsyms]     [k] vma_alloc_folio
+     0.05%     0.01%  fff_para  [kernel.kallsyms]     [k] get_page_from_freelist
+     0.05%     0.00%  fff_para  [xfs]                 [k] xfs_file_buffered_write
+     0.05%     0.00%  fff_para  [kernel.kallsyms]     [k] vfs_write
+     0.05%     0.00%  fff_para  [xfs]                 [k] xfs_file_write_iter
+     0.05%     0.04%  fff_para  [kernel.kallsyms]     [k] update_cfs_group
+     0.04%     0.04%  fff_para  [kernel.kallsyms]     [k] folio_mark_accessed
+     0.04%     0.04%  fff_para  [kernel.kallsyms]     [k] __tlb_remove_page_size
+     0.04%     0.03%  fff_para  [kernel.kallsyms]     [k] update_load_avg
+     0.04%     0.04%  fff_para  libc.so.6             [.] pthread_mutex_lock
+     0.04%     0.03%  fff_para  [kernel.kallsyms]     [k] set_ptes.isra.0
+     0.04%     0.01%  fff_para  [kernel.kallsyms]     [k] tick_program_event
+     0.04%     0.03%  fff_para  [kernel.kallsyms]     [k] cgroup_rstat_updated
+     0.04%     0.04%  fff_para  [kernel.kallsyms]     [k] percpu_counter_add_batch
+     0.04%     0.02%  fff_para  [kernel.kallsyms]     [k] irqentry_exit_to_user_mode
+     0.04%     0.04%  fff_para  [kernel.kallsyms]     [k] _raw_spin_lock
+     0.04%     0.04%  fff_para  [kernel.kallsyms]     [k] vm_normal_page
+     0.04%     0.00%  fff_para  fff_para              [.] search_file(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+     0.04%     0.03%  fff_para  [kernel.kallsyms]     [k] __rcu_read_lock
+     0.03%     0.01%  fff_para  libstdc++.so.6.0.33   [.] operator new(unsigned long)
+     0.03%     0.02%  fff_para  libc.so.6             [.] malloc
+     0.03%     0.00%  fff_para  [kernel.kallsyms]     [k] clockevents_program_event
+     0.03%     0.00%  fff_para  libstdc++.so.6.0.33   [.] std::thread::_M_start_thread(std::unique_ptr<std::thread::_State, std::default_delete<std::thread::_State> >, void (*)())
+     0.03%     0.00%  fff_para  [kernel.kallsyms]     [k] irqentry_exit
+     0.03%     0.00%  fff_para  libc.so.6             [.] pthread_create
+     0.03%     0.03%  fff_para  [kernel.kallsyms]     [k] xas_move_index
+     0.03%     0.00%  fff_para  [kernel.kallsyms]     [k] folio_add_lru
+     0.03%     0.00%  fff_para  [kernel.kallsyms]     [k] folio_add_lru_vma
+     0.03%     0.00%  fff_para  [kernel.kallsyms]     [k] iomap_file_buffered_write
+     0.03%     0.01%  fff_para  [kernel.kallsyms]     [k] folio_batch_move_lru
+     0.03%     0.00%  fff_para  [kernel.kallsyms]     [k] tlb_finish_mmu
+     0.03%     0.00%  fff_para  libc.so.6             [.] 0x00007217df29c550
+     0.03%     0.00%  fff_para  libc.so.6             [.] 0x00007217df329c5d
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] trigger_load_balance
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_clone3
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] __do_sys_clone3
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] kernel_clone
+     0.02%     0.02%  fff_para  [kernel.kallsyms]     [k] xas_descend
+     0.02%     0.02%  fff_para  [kernel.kallsyms]     [k] clear_page_erms
+     0.02%     0.01%  fff_para  [kernel.kallsyms]     [k] update_curr
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] irq_exit_rcu
+     0.02%     0.01%  fff_para  [kernel.kallsyms]     [k] __irq_exit_rcu
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] copy_process
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_event_init_task
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_event_init_context
+     0.02%     0.00%  fff_para  fff_para              [.] void std::vector<unsigned long, std::allocator<unsigned long> >::_M_realloc_insert<unsigned long const&>(__gnu_cxx::__normal_iterator<unsigned long*, std::vector<unsigned long, std::allocator<unsigned long> > >, unsigned long const&)
+     0.02%     0.01%  fff_para  [kernel.kallsyms]     [k] nohz_balancer_kick
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] iomap_write_iter
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] inherit_task_group.isra.0
+     0.02%     0.02%  fff_para  [kernel.kallsyms]     [k] get_mem_cgroup_from_mm
+     0.02%     0.02%  fff_para  libc.so.6             [.] 0x000000000019834a
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] alloc_pages
+     0.02%     0.02%  fff_para  [kernel.kallsyms]     [k] native_write_msr
+     0.02%     0.01%  fff_para  [kernel.kallsyms]     [k] native_set_pte
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] inherit_event.isra.0
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] handle_softirqs
+     0.02%     0.01%  fff_para  [kernel.kallsyms]     [k] __count_memcg_events
+     0.02%     0.00%  fff_para  libc.so.6             [.] 0x00007217df39834f
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_event_alloc
+     0.02%     0.01%  fff_para  [kernel.kallsyms]     [k] mem_cgroup_commit_charge
+     0.02%     0.00%  fff_para  libc.so.6             [.] 0x00007217df298f70
+     0.02%     0.00%  fff_para  [xfs]                 [k] xfs_file_write_checks
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] kiocb_modified
+     0.02%     0.00%  fff_para  [xfs]                 [k] xfs_vn_update_time
+     0.02%     0.00%  fff_para  [kernel.kallsyms]     [k] pte_alloc_one
+     0.02%     0.01%  fff_para  [kernel.kallsyms]     [k] __pte_offset_map
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_futex
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] do_futex
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] folio_add_new_anon_rmap
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] __pte_offset_map_lock
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] lapic_next_deadline
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] count_memcg_events.constprop.0
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] pte_offset_map_nolock
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] rmqueue
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] hrtimer_active
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] futex_wait
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __futex_wait
+     0.01%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98b548
+     0.01%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98c75e
+     0.01%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98af46
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] lru_add_fn
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] try_charge_memcg
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] _raw_spin_trylock
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] iomap_write_begin
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] iomap_get_folio
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __filemap_get_folio
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] kick_ilb
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] ktime_get
+     0.01%     0.00%  fff_para  libc.so.6             [.] 0x00007217df298fd7
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __rmqueue_pcplist
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] run_rebalance_domains
+     0.01%     0.01%  fff_para  libc.so.6             [.] cfree
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __memcg_kmem_charge_page
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] syscall_return_via_sysret
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] _raw_spin_unlock_irqrestore
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] _raw_spin_lock_irqsave
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] x86_pmu_enable
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] intel_tfa_pmu_enable_all
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] entry_SYSRETQ_unsafe_stack
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] mem_cgroup_from_task
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] xas_start
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] account_user_time
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] account_process_tick
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __schedule
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] schedule
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __raw_spin_lock_irqsave
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_try_init_event
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_init_event
+     0.01%     0.01%  fff_para  libc.so.6             [.] 0x000000000019837d
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] idle_cpu
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] error_return
+     0.01%     0.00%  fff_para  [xfs]                 [k] xfs_trans_alloc
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] fpregs_assert_state_consistent
+     0.01%     0.00%  fff_para  [xfs]                 [k] xfs_log_ticket_ungrant
+     0.01%     0.00%  fff_para  [xfs]                 [k] xfs_trans_commit
+     0.01%     0.00%  fff_para  [xfs]                 [k] __xfs_trans_commit
+     0.01%     0.00%  fff_para  [xfs]                 [k] xlog_cil_commit
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] lru_gen_del_folio.constprop.0
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] llist_add_batch
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] ktime_get_update_offsets_now
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] lru_gen_add_folio
+     0.01%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2ac4bd
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] rmqueue_bulk
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] kmem_cache_alloc_node
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] x86_pmu_event_init
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] vm_mmap_pgoff
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] kmem_cache_free
+     0.01%     0.00%  fff_para  libc.so.6             [.] __mmap
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_mmap
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] ksys_mmap_pgoff
+     0.01%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98e789
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] futex_wait_queue
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] ___slab_alloc
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] rcu_core_si
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] rcu_core
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] allocate_fake_cpuc
+     0.01%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2aa8f8
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] do_exit
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] exit_mm
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] ___pte_free_tlb
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] free_pgtables
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] free_pgd_range
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] free_p4d_range
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] free_pud_range
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] arch_scale_freq_tick
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] native_queued_spin_lock_slowpath
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] folio_lruvec_lock_irqsave
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] futex_q_lock
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] futex_wait_setup
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] filemap_add_folio
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __filemap_add_folio
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] hrtimer_forward
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] sched_clock
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] folio_account_dirtied
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] iomap_write_end
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] filemap_dirty_folio
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] hrtimer_update_next_event
+     0.01%     0.00%  fff_para  [xfs]                 [k] xfs_trans_reserve
+     0.01%     0.00%  fff_para  [xfs]                 [k] xfs_log_reserve
+     0.01%     0.00%  fff_para  [xfs]                 [k] xfs_buffered_write_iomap_begin
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] iomap_iter
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] __update_load_avg_se
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] __calc_delta.constprop.0
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] reweight_entity
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] update_curr_se
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __folio_throttle_swaprate
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] flush_tlb_mm_range
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] do_mmap
+     0.01%     0.01%  fff_para  [kernel.kallsyms]     [k] recalc_sigpending
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_rt_sigprocmask
+     0.01%     0.00%  fff_para  [kernel.kallsyms]     [k] sigprocmask
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mmap_region
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __mmap_region
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __split_vma
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] new_slab
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] allocate_slab
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] rcu_sched_clock_irq
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] memset_orig
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] native_flush_tlb_multi
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] on_each_cpu_cond_mask
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2aceb9
+     0.00%     0.00%  fff_para  libc.so.6             [.] __mprotect
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] pick_next_task
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98e41c
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df96ee67
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] _dl_catch_exception
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df96ea2d
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] blk_cgroup_congested
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] filemap_map_pmd
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __update_load_avg_cfs_rq
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] lru_add_drain_cpu
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] lru_add_drain
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2aa599
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_mprotect
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] do_mprotect_pkey
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mprotect_fixup
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] update_blocked_averages
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] task_work_run
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] intel_cpuc_prepare
+     0.00%     0.00%  fff_para  fff_para              [.] _start
+     0.00%     0.00%  fff_para  libc.so.6             [.] __libc_start_main
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df22a1d1
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df247bbe
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df247a76
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df971578
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df96d0f2
+     0.00%     0.00%  fff_para  fff_para              [.] __do_global_dtors_aux
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df30e090
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_exit_group
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] do_group_exit
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mmput
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __mmput
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] exit_mmap
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df975529
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __flush_smp_call_function_queue
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] asm_sysvec_call_function
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] sysvec_call_function
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __sysvec_call_function
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] generic_smp_call_function_single_interrupt
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df97bae3
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] filemap_get_entry
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __update_blocked_fair
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] task_mm_cid_work
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] _raw_spin_lock_irq
+     0.00%     0.00%  fff_para  libstdc++.so.6.0.33   [.] malloc@plt
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] native_sched_clock
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] psi_task_switch
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] psi_group_change
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] sched_clock_cpu
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] sched_clock_noinstr
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __get_user_8
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __rseq_handle_notify_resume
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] rseq_ip_fixup
+     0.00%     0.00%  fff_para  fff_para              [.] operator new(unsigned long)@plt
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __bitmap_and
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] rebalance_domains
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __intel_pmu_enable_all.isra.0
+     0.00%     0.00%  fff_para  libc.so.6             [.] __madvise
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_madvise
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] do_madvise
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] madvise_walk_vmas
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] madvise_vma_behavior
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] zap_page_range_single
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x000000000019836d
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] native_tlb_remove_table
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __get_free_pages
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] smp_call_function_single_async
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] generic_exec_single
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x0000000000198369
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df39836d
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __fdget_pos
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x0000000000198966
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df39896a
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] read_tsc
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] filemap_alloc_folio
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] folio_alloc
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] _find_next_and_bit
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x0000000000199384
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df39938a
+     0.00%     0.00%  fff_para  [xfs]                 [k] xlog_grant_head_check
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] uprobe_free_utask
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df29ca36
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_exit
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] exit_mm_release
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mm_release
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x0000000000198925
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df39892b
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] rep_movs_alternative
+     0.00%     0.00%  fff_para  libc.so.6             [.] pthread_mutex_unlock
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __hrtimer_next_event_base
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] xas_store
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] nohz_balance_exit_idle
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] x86_pmu_disable
+     0.00%     0.00%  fff_para  fff_para              [.] std::vector<char, std::allocator<char> >::_M_default_append(unsigned long)
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2ac51a
+     0.00%     0.00%  fff_para  fff_para              [.] memcpy@plt
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df398900
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mem_cgroup_track_foreign_dirty_slowpath
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __folio_mark_dirty
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] raise_softirq
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00000000000ab365
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2ab369
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vm_area_dup
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] kmem_cache_alloc
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __memcg_slab_post_alloc_hook
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mod_objcg_state
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mod_memcg_lruvec_state
+     0.00%     0.00%  fff_para  [xfs]                 [k] xlog_grant_add_space
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] tick_sched_do_timer
+     0.00%     0.00%  fff_para  [xfs]                 [k] xfs_bmbt_to_iomap
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] page_counter_try_charge
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] pud_val
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vm_get_page_prot
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] pte_mkwrite
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] avg_vruntime
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __thp_vma_allowable_orders
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] balance_dirty_pages_ratelimited_flags
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] balance_dirty_pages
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mem_cgroup_wb_stats
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mem_cgroup_flush_stats.part.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] cgroup_rstat_flush
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] cgroup_rstat_flush_locked
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df29c8f6
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] load_balance
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] cpuacct_charge
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] lock_mm_and_find_vma
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] native_flush_tlb_local
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __mod_zone_page_state
+     0.00%     0.00%  fff_para  libstdc++.so.6.0.33   [.] std::thread::join()
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] pmd_val
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] shuffle_freelist
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] down_read_killable
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] rwsem_down_read_slowpath
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] schedule_preempt_disabled
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] kmalloc_trace
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] deactivate_slab
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] try_to_wake_up
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_event_mmap_event
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_event_mmap
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] get_vma_policy
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] consume_stock
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98b5a0
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df971824
+     0.00%     0.00%  fff_para  libstdc++.so.6.0.33   [.] free@plt
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] free_unref_page_list
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mas_wr_end_piv
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mas_store_gfp
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mksaveddirty_shift
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2aa099
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] native_read_msr
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_iterate_ctx
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_iterate_sb.constprop.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vma_modify
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mas_alloc_nodes
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mas_preallocate
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] irqentry_enter_from_user_mode
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] up_write
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] rwsem_wake.isra.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] wake_up_q
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] ttwu_queue_wakelist
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00000000000990fd
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df29e71a
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df299245
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2990ff
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __set_task_blocked
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] free_unref_page_commit
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] slab_update_freelist.isra.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] dup_task_struct
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] alloc_thread_stack_node
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __vmalloc_node_range
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __vmalloc_area_node
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] alloc_pages_bulk_array_mempolicy
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] change_pte_range
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] change_protection
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] change_protection_range
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] change_p4d_range
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] change_pmd_range.isra.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __slab_free
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __get_random_u32_below
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] rcu_do_batch
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vm_area_free_rcu_cb
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __vm_area_free
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] pick_next_task_fair
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df29e7a3
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df298d71
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2aa930
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2aa942
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] finish_task_switch.isra.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __perf_event_task_sched_in
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] perf_ctx_enable
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] flush_tlb_func
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] intel_put_event_constraints
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mutex_unlock
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] find_get_pmu_context
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __mod_memcg_state
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] memcg_account_kmem
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mod_memcg_state
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] pfn_pte
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] kmalloc_node_trace
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] folio_prep_large_rmappable
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] wake_up_new_task
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] enqueue_task
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] enqueue_task_fair
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] enqueue_entity
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vma_merge
+     0.00%     0.00%  fff_para  libc.so.6             [.] get_nprocs
+     0.00%     0.00%  fff_para  libc.so.6             [.] __read_nocancel
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df97171f
+     0.00%     0.00%  fff_para  libstdc++.so.6.0.33   [.] 0x00007217df6b750c
+     0.00%     0.00%  fff_para  libstdc++.so.6.0.33   [.] std::ios_base_library_init()
+     0.00%     0.00%  fff_para  libstdc++.so.6.0.33   [.] std::locale::locale()
+     0.00%     0.00%  fff_para  libstdc++.so.6.0.33   [.] 0x00007217df6e9884
+     0.00%     0.00%  fff_para  libstdc++.so.6.0.33   [.] std::__timepunct<wchar_t>::__timepunct(std::__timepunct_cache<wchar_t>*, unsigned long)
+     0.00%     0.00%  fff_para  libm.so.6             [.] 0x00007217df527000
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x000000000000f5fd
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df97b601
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] policy_nodemask
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x000000000000a796
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df9771fc
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df97679a
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x000000000000b146
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df977120
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] migrate_task_rq_fair
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] hrtimer_wakeup
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] wake_up_process
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x000000000000fa1c
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df97ba22
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x000000000000fb4b
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df97bb4e
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df977103
+     0.00%     0.00%  fff_para  libm.so.6             [.] __acos_finite
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x000000000000f9cd
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98e6f2
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df97b9d1
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df992bd0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vma_dup_policy
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df973f79
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df991d2c
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] update_rt_rq_load_avg
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df992b4a
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df974376
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] kthread_blkcg
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] _find_first_bit
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df9757cb
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df982c4c
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __cgroup_account_cputime_field
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00000000000211a7
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98d1b0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __split_huge_pmd
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] find_mergeable_anon_vma
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] free_unref_page_prepare
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mas_rev_awalk
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mt_find
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00000000000aa5cd
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] ____fput
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __fput
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __pte_alloc
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __x64_sys_execve
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] do_execveat_common.isra.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] bprm_execve
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] bprm_execve.part.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] exec_binprm
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] elf_load
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] dput
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] find_vma
+     0.00%     0.00%  fff_para  [unknown]             [k] 0x00007d21d14eef3b
+     0.00%     0.00%  fff_para  ld-linux-x86-64.so.2  [.] 0x00007217df98b540
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] search_binary_handler
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] syscall_exit_to_user_mode
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] load_elf_binary
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] load_elf_interp.isra.0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vm_mmap
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] __dentry_kill
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] dentry_unlink_inode
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] get_unmapped_area
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] iput
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] evict
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] thp_get_unmapped_area
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] arch_get_unmapped_area_topdown
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] destroy_inode
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] free_inode_nonrcu
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vm_unmapped_area
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] mas_empty_area_rev
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] vma_adjust_trans_huge
+     0.00%     0.00%  fff_para  libc.so.6             [.] 0x00007217df2aa5d0
+     0.00%     0.00%  fff_para  [kernel.kallsyms]     [k] cap_mmap_file
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
