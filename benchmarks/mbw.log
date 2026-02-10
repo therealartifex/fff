@@ -1,0 +1,75 @@
+brisco@hermes:~/fff$ mbw 1024
+Long uses 8 bytes. Allocating 2*134217728 elements = 2147483648 bytes of memory.
+Using 262144 bytes as blocks for memcpy block copy test.
+Getting down to business... Doing 10 runs per test.
+0	Method: MEMCPY	Elapsed: 0.23198	MiB: 1024.00000	Copy: 4414.174 MiB/s
+1	Method: MEMCPY	Elapsed: 0.23278	MiB: 1024.00000	Copy: 4398.966 MiB/s
+2	Method: MEMCPY	Elapsed: 0.24487	MiB: 1024.00000	Copy: 4181.845 MiB/s
+3	Method: MEMCPY	Elapsed: 0.23176	MiB: 1024.00000	Copy: 4418.288 MiB/s
+4	Method: MEMCPY	Elapsed: 0.23166	MiB: 1024.00000	Copy: 4420.233 MiB/s
+5	Method: MEMCPY	Elapsed: 0.23216	MiB: 1024.00000	Copy: 4410.713 MiB/s
+6	Method: MEMCPY	Elapsed: 0.23175	MiB: 1024.00000	Copy: 4418.612 MiB/s
+7	Method: MEMCPY	Elapsed: 0.24469	MiB: 1024.00000	Copy: 4184.973 MiB/s
+8	Method: MEMCPY	Elapsed: 0.23158	MiB: 1024.00000	Copy: 4421.874 MiB/s
+9	Method: MEMCPY	Elapsed: 0.23197	MiB: 1024.00000	Copy: 4414.440 MiB/s
+AVG	Method: MEMCPY	Elapsed: 0.23452	MiB: 1024.00000	Copy: 4366.380 MiB/s
+0	Method: DUMB	Elapsed: 0.23702	MiB: 1024.00000	Copy: 4320.292 MiB/s
+1	Method: DUMB	Elapsed: 0.22399	MiB: 1024.00000	Copy: 4571.633 MiB/s
+2	Method: DUMB	Elapsed: 0.22387	MiB: 1024.00000	Copy: 4574.144 MiB/s
+3	Method: DUMB	Elapsed: 0.22392	MiB: 1024.00000	Copy: 4573.001 MiB/s
+4	Method: DUMB	Elapsed: 0.22415	MiB: 1024.00000	Copy: 4568.308 MiB/s
+5	Method: DUMB	Elapsed: 0.22395	MiB: 1024.00000	Copy: 4572.429 MiB/s
+6	Method: DUMB	Elapsed: 0.22389	MiB: 1024.00000	Copy: 4573.736 MiB/s
+7	Method: DUMB	Elapsed: 0.22377	MiB: 1024.00000	Copy: 4576.168 MiB/s
+8	Method: DUMB	Elapsed: 0.23747	MiB: 1024.00000	Copy: 4312.051 MiB/s
+9	Method: DUMB	Elapsed: 0.22434	MiB: 1024.00000	Copy: 4564.521 MiB/s
+AVG	Method: DUMB	Elapsed: 0.22664	MiB: 1024.00000	Copy: 4518.232 MiB/s
+0	Method: MCBLOCK	Elapsed: 0.15883	MiB: 1024.00000	Copy: 6447.307 MiB/s
+1	Method: MCBLOCK	Elapsed: 0.15878	MiB: 1024.00000	Copy: 6449.094 MiB/s
+2	Method: MCBLOCK	Elapsed: 0.15888	MiB: 1024.00000	Copy: 6445.278 MiB/s
+3	Method: MCBLOCK	Elapsed: 0.15879	MiB: 1024.00000	Copy: 6448.931 MiB/s
+4	Method: MCBLOCK	Elapsed: 0.15889	MiB: 1024.00000	Copy: 6444.548 MiB/s
+5	Method: MCBLOCK	Elapsed: 0.15853	MiB: 1024.00000	Copy: 6459.182 MiB/s
+6	Method: MCBLOCK	Elapsed: 0.15772	MiB: 1024.00000	Copy: 6492.518 MiB/s
+7	Method: MCBLOCK	Elapsed: 0.15893	MiB: 1024.00000	Copy: 6443.007 MiB/s
+8	Method: MCBLOCK	Elapsed: 0.17169	MiB: 1024.00000	Copy: 5964.168 MiB/s
+9	Method: MCBLOCK	Elapsed: 0.15877	MiB: 1024.00000	Copy: 6449.581 MiB/s
+AVG	Method: MCBLOCK	Elapsed: 0.15998	MiB: 1024.00000	Copy: 6400.752 MiB/s
+brisco@hermes:~/fff$ mbw 2048
+Long uses 8 bytes. Allocating 2*268435456 elements = 4294967296 bytes of memory.
+Using 262144 bytes as blocks for memcpy block copy test.
+Getting down to business... Doing 10 runs per test.
+0	Method: MEMCPY	Elapsed: 0.47063	MiB: 2048.00000	Copy: 4351.623 MiB/s
+1	Method: MEMCPY	Elapsed: 0.47240	MiB: 2048.00000	Copy: 4335.291 MiB/s
+2	Method: MEMCPY	Elapsed: 0.45807	MiB: 2048.00000	Copy: 4470.913 MiB/s
+3	Method: MEMCPY	Elapsed: 0.47087	MiB: 2048.00000	Copy: 4349.387 MiB/s
+4	Method: MEMCPY	Elapsed: 0.47114	MiB: 2048.00000	Copy: 4346.866 MiB/s
+5	Method: MEMCPY	Elapsed: 0.45843	MiB: 2048.00000	Copy: 4467.392 MiB/s
+6	Method: MEMCPY	Elapsed: 0.45807	MiB: 2048.00000	Copy: 4470.893 MiB/s
+7	Method: MEMCPY	Elapsed: 0.45838	MiB: 2048.00000	Copy: 4467.948 MiB/s
+8	Method: MEMCPY	Elapsed: 0.47031	MiB: 2048.00000	Copy: 4354.538 MiB/s
+9	Method: MEMCPY	Elapsed: 0.47130	MiB: 2048.00000	Copy: 4345.400 MiB/s
+AVG	Method: MEMCPY	Elapsed: 0.46596	MiB: 2048.00000	Copy: 4395.210 MiB/s
+0	Method: DUMB	Elapsed: 0.44237	MiB: 2048.00000	Copy: 4629.567 MiB/s
+1	Method: DUMB	Elapsed: 0.44272	MiB: 2048.00000	Copy: 4625.990 MiB/s
+2	Method: DUMB	Elapsed: 0.44320	MiB: 2048.00000	Copy: 4620.939 MiB/s
+3	Method: DUMB	Elapsed: 0.45497	MiB: 2048.00000	Copy: 4501.406 MiB/s
+4	Method: DUMB	Elapsed: 0.45632	MiB: 2048.00000	Copy: 4488.069 MiB/s
+5	Method: DUMB	Elapsed: 0.44312	MiB: 2048.00000	Copy: 4621.815 MiB/s
+6	Method: DUMB	Elapsed: 0.44333	MiB: 2048.00000	Copy: 4619.625 MiB/s
+7	Method: DUMB	Elapsed: 0.44281	MiB: 2048.00000	Copy: 4624.977 MiB/s
+8	Method: DUMB	Elapsed: 0.45522	MiB: 2048.00000	Copy: 4498.953 MiB/s
+9	Method: DUMB	Elapsed: 0.45579	MiB: 2048.00000	Copy: 4493.327 MiB/s
+AVG	Method: DUMB	Elapsed: 0.44798	MiB: 2048.00000	Copy: 4571.593 MiB/s
+0	Method: MCBLOCK	Elapsed: 0.31282	MiB: 2048.00000	Copy: 6546.812 MiB/s
+1	Method: MCBLOCK	Elapsed: 0.31270	MiB: 2048.00000	Copy: 6549.450 MiB/s
+2	Method: MCBLOCK	Elapsed: 0.31285	MiB: 2048.00000	Copy: 6546.247 MiB/s
+3	Method: MCBLOCK	Elapsed: 0.31268	MiB: 2048.00000	Copy: 6549.911 MiB/s
+4	Method: MCBLOCK	Elapsed: 0.31274	MiB: 2048.00000	Copy: 6548.487 MiB/s
+5	Method: MCBLOCK	Elapsed: 0.32541	MiB: 2048.00000	Copy: 6293.560 MiB/s
+6	Method: MCBLOCK	Elapsed: 0.32595	MiB: 2048.00000	Copy: 6283.153 MiB/s
+7	Method: MCBLOCK	Elapsed: 0.31266	MiB: 2048.00000	Copy: 6550.351 MiB/s
+8	Method: MCBLOCK	Elapsed: 0.31281	MiB: 2048.00000	Copy: 6547.168 MiB/s
+9	Method: MCBLOCK	Elapsed: 0.31270	MiB: 2048.00000	Copy: 6549.450 MiB/s
+AVG	Method: MCBLOCK	Elapsed: 0.31533	MiB: 2048.00000	Copy: 6494.750 MiB/s
+

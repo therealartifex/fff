@@ -1,0 +1,76 @@
+brisco@hermes:~/fff$ sysbench memory --threads=$(nproc) --memory-block-size=1M --memory-total-size=10G run
+sysbench 1.0.20 (using system LuaJIT 2.1.0-beta3)
+
+Running the test with following options:
+Number of threads: 72
+Initializing random number generator from current time
+
+
+Running memory speed test with the following options:
+  block size: 1024KiB
+  total size: 10240MiB
+  operation: write
+  scope: global
+
+Initializing worker threads...
+
+Threads started!
+
+Total operations: 10224 (30833.57 per second)
+
+10224.00 MiB transferred (30833.57 MiB/sec)
+
+
+General statistics:
+    total time:                          0.3297s
+    total number of events:              10224
+
+Latency (ms):
+         min:                                    0.06
+         avg:                                    1.61
+         max:                                    8.38
+         95th percentile:                        4.57
+         sum:                                16483.42
+
+Threads fairness:
+    events (avg/stddev):           142.0000/0.00
+    execution time (avg/stddev):   0.2289/0.09
+
+brisco@hermes:~/fff$ sysbench memory --threads=$(nproc) --memory-oper=read --memory-total-size=10G run
+sysbench 1.0.20 (using system LuaJIT 2.1.0-beta3)
+
+Running the test with following options:
+Number of threads: 72
+Initializing random number generator from current time
+
+
+Running memory speed test with the following options:
+  block size: 1KiB
+  total size: 10240MiB
+  operation: read
+  scope: global
+
+Initializing worker threads...
+
+Threads started!
+
+Total operations: 10485720 (33482286.65 per second)
+
+10239.96 MiB transferred (32697.55 MiB/sec)
+
+
+General statistics:
+    total time:                          0.3088s
+    total number of events:              10485720
+
+Latency (ms):
+         min:                                    0.00
+         avg:                                    0.00
+         max:                                    0.11
+         95th percentile:                        0.00
+         sum:                                 1147.41
+
+Threads fairness:
+    events (avg/stddev):           145635.0000/0.00
+    execution time (avg/stddev):   0.0159/0.00
+
