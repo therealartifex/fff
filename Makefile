@@ -14,11 +14,11 @@ production: $(SOURCES)
 
 pgo: $(SOURCES)
 	$(CXX) $(CXXFLAGS) -fprofile-generate $(LDFLAGS) -o $(TARGET)_pgo_gen $(SOURCES)
-	mv $(TARGET)_pgo_gen-$(TARGET).gcda $(TARGET).gcda
 	@echo "Run training workload: ./$(TARGET) <query> <file> > /dev/null"
 	@echo "Then run: make pgo-use"
 
 pgo-use: $(SOURCES)
+	mv $(TARGET)_pgo_gen-$(TARGET).gcda $(TARGET).gcda
 	$(CXX) $(CXXFLAGS) -fprofile-use $(LDFLAGS) -o $(TARGET) $(SOURCES)
 	rm -f *.gcda $(TARGET)_pgo_gen
 
