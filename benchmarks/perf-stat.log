@@ -1,18 +1,16 @@
-# started on Tue Feb 10 01:54:04 2026
 
+ Performance counter stats for './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt':
 
- Performance counter stats for 'taskset -c 0-15 ./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt':
+       22986636107      cycles                                                                
+       14751140236      instructions                     #    0.64  insn per cycle            
+         116591155      cache-references                                                      
+         104849069      cache-misses                     #   89.93% of all cache refs         
+         101513927      branch-misses                                                         
+            105187      page-faults                                                           
 
-       23204640430      cycles                                                                
-       16975932004      instructions                     #    0.73  insn per cycle            
-         109520748      cache-references                                                      
-         101651780      cache-misses                     #   92.82% of all cache refs         
-         397751883      branch-misses                                                         
-             59066      page-faults                                                           
+       0.285542066 seconds time elapsed
 
-       0.639555658 seconds time elapsed
-
-       7.813726000 seconds user
-       0.348898000 seconds sys
+       8.383079000 seconds user
+       1.128472000 seconds sys
 
 
