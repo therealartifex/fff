@@ -1,4 +1,4 @@
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `./fff_old hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null` | 631.7 ± 3.5 | 628.4 | 638.6 | 1.02 ± 0.01 |
-| `./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null` | 616.5 ± 5.7 | 607.5 | 625.0 | 1.00 |
+| `./fff_old hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null` | 636.1 ± 4.9 | 630.1 | 643.0 | 1.05 ± 0.01 |
+| `./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null` | 604.2 ± 6.2 | 598.0 | 615.0 | 1.00 |
