@@ -20,7 +20,7 @@ pgo: $(SOURCES)
 	@echo "Then run: make pgo-use"
 
 pgo-use: $(SOURCES)
-	$(CXX) $(CXXFLAGS) -fprofile-use=$(PROFDIR) -Wno-missing-profile $(LDFLAGS) -o $(TARGET) $(SOURCES)
+	$(CXX) $(CXXFLAGS) -fprofile-use=$(PROFDIR) $(LDFLAGS) -o $(TARGET) $(SOURCES)
 	rm -rf $(PROFDIR)
 
 clean:
