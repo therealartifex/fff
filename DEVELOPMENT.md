@@ -1,4 +1,4 @@
-# fff — Fast File Find
+# fff — Fast Find in Fields
 
 A high-performance grep-like text search tool written in C++17, targeting Linux machines with AVX-512 support.
 
@@ -51,14 +51,47 @@ Outputs matching lines with query highlighted in red (when stdout is a terminal)
 All benchmarks on: 2.9 GB file (`txtlog_alien_751.txt`), query `"hoyoverse"`, 24,477 matching lines.
 
 | Change | Time | Speedup vs Baseline | Measured? |
-|--------|------|---------------------|-----------|
+|--------|------|---------------------|----------|
 | Baseline (with field-aware code, byte-by-byte scan) | 11.3s | 1.0x | Yes |
 | BMH shift table built once (was rebuilding per line) | 7.46s | 1.5x | Yes |
 | Fused single-pass + direct fwrite | ~7.0s | ~1.6x | Approximate |
-| 16-thread parallelization | 0.634s | 17.8x | Yes |
-| grep (single-threaded, for reference) | 2.73s | — | Yes |
+| 16-thread parallelization | 0.634s | 17.8x | Yes (Oct 2025) |
+| + batched output + code quality pass + LTO | 0.627s | 18.0x | Yes (Feb 2026) |
+| grep (single-threaded, for reference) | 2.632s | — | Yes (Feb 2026) |
 
-**Current measured result: 0.634s (17.8x faster than baseline, 4.3x faster than grep)**
+**Current measured result: 0.627s hot-cache, 1.705s cold-cache (4.19x faster than grep)**
+
+---
+
+## Benchmark Analysis (Feb 2026)
+
+Full results in `benchmarks/`. Run with `hyperfine` (10 runs, 3 warmup) on 2.9 GB file.
+
+### Timing
+| Benchmark | Mean | Stddev | Key takeaway |
+|-----------|------|--------|-------------|
+| Hot-cache | 0.627s | ±0.005s | Tight variance (0.8% CV) |
+| Cold-cache | 1.705s | ±0.016s | 2.72x slower — I/O dominates |
+| CPU-pinned (NUMA 0) | 0.626s | ±0.004s | Identical to unpinned |
+| Output to file vs /dev/null | 0.634s vs 0.635s | | No output cost — batching works |
+| vs grep (to file) | 0.628s vs 2.632s | | **4.19x faster** |
+
+### Hardware counters
+| Counter | Value | Interpretation |
+|---------|-------|---------------|
+| IPC | 0.73 | Low — CPU stalled on memory |
+| Cache miss rate | 92.8% | Nearly all accesses miss |
+| LLC miss rate | 88.9% | Data comes from DRAM |
+| Branch misses | 397M | Significant — PGO target |
+| Page faults | 59K | Reasonable for 2.9 GB mmap |
+
+### Conclusions
+- **Workload is memory-bandwidth bound.** The 92.8% cache miss rate and 0.73 IPC mean the CPU is mostly waiting for DRAM. CPU-side code optimizations (heap alloc, sort, double-buffer removal) improved code quality but did not measurably change wall-clock time.
+- **NUMA effects are negligible** for this workload.
+- **Output buffering is fully effective** — zero measurable cost to write output.
+- **Cold-cache penalty is 1.08s** (63% of hot-cache time), dominated by kernel page fault handling (system time: 0.33s hot → 1.60s cold).
+- **grep spends ~21% in `read()` syscalls** (`copy_page_to_iter`). fff avoids this via mmap.
+- **397M branch misses** is the most actionable CPU-side metric — PGO should help.
 
 ---
 
@@ -108,21 +141,27 @@ All previously identified issues have been resolved (see Completed Optimizations
 
 ## Planned / Unfinished Optimizations
 
-### A. `read()` vs `mmap()`
-**Rationale:** `perf` profiling of grep showed it uses buffered `read()` rather than `mmap`, which may be faster for sequential streaming (avoids page-fault overhead).
-**Estimated impact:** 5–10% (unverified).
+Prioritized by expected impact given the memory-bandwidth-bound profile.
+
+### A. Profile-Guided Optimization (PGO)
+Now available via `make pgo` + `make pgo-use`. Targets the 397M branch misses with profile-guided branch layout and code placement.
+**Estimated impact:** 5–15% (most impactful remaining optimization).
 
 ### B. Thread Count Tuning
-Currently capped at 16 threads for intra-file parallelism. The system has 72 hardware threads. Test 24, 32, 48 to find the sweet spot before memory bandwidth saturates.
+Currently capped at 16 threads for intra-file parallelism. With memory bandwidth saturated (92.8% cache miss rate), fewer threads may perform equally well or better. Test 4, 8, 12, 16 to find the sweet spot.
 
-### C. Profile-Guided Optimization (PGO)
-Now available via `make pgo` + `make pgo-use`. **Estimated impact:** 5–15% on top of LTO (unverified).
+### C. `MAP_POPULATE` + `madvise(MADV_SEQUENTIAL)`
+**Rationale:** `MAP_POPULATE` pre-faults all pages at mmap time (eliminates 59K on-demand page faults). `madvise(MADV_SEQUENTIAL)` provides mmap-specific readahead hint (complements `posix_fadvise`).
+**Estimated impact:** Significant for cold-cache (1.705s → potentially sub-1.2s). Minimal for hot-cache.
 
-### D. ~~Link-Time Optimization (LTO)~~
+### D. `read()` vs `mmap()`
+**Rationale:** grep's profile shows 21% in `read()` syscalls, but this includes `copy_page_to_iter` (kernel→user copy) that mmap avoids. Current data suggests mmap is the right choice. Re-evaluate only if cold-cache performance becomes a priority.
+
+### ~~E. LTO~~
 Done — `-flto` added to `CXXFLAGS` and `LDFLAGS` in Makefile.
 
-### E. NUMA Awareness
-Pin threads to NUMA nodes to reduce cross-socket memory latency. Relevant for dual-socket Xeon.
+### ~~F. NUMA Awareness~~
+Benchmarked: CPU-pinned (0.626s) ≈ unpinned (0.627s). No measurable NUMA effect for this workload. Deprioritized.
 
 ---
 
@@ -156,20 +195,27 @@ make pgo-use                    # Step 3: optimized build + cleanup
 ## Performance Benchmarking
 
 Requires [`hyperfine`](https://github.com/sharkdp/hyperfine) for statistical benchmarking.
+All results are saved to `benchmarks/` for later analysis. Create it with `mkdir -p benchmarks`.
 
 ### Hot-cache (measures compute performance)
 ```bash
 # Single tool, 10 runs with 3 warmup
 hyperfine --warmup 3 --runs 10 \
+  --export-json benchmarks/hot-cache.json \
+  --export-markdown benchmarks/hot-cache.md \
   './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null'
 
 # A/B comparison vs grep
 hyperfine --warmup 3 --runs 10 \
+  --export-json benchmarks/vs-grep.json \
+  --export-markdown benchmarks/vs-grep.md \
   './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null' \
   'grep -a hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null'
 
 # Before/after comparison (rename old binary to fff_old first)
 hyperfine --warmup 3 --runs 10 \
+  --export-json benchmarks/before-after.json \
+  --export-markdown benchmarks/before-after.md \
   './fff_old hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null' \
   './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null'
 ```
@@ -178,6 +224,8 @@ hyperfine --warmup 3 --runs 10 \
 ```bash
 hyperfine --runs 5 \
   --prepare 'sync; echo 3 > /proc/sys/vm/drop_caches' \
+  --export-json benchmarks/cold-cache.json \
+  --export-markdown benchmarks/cold-cache.md \
   './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null'
 ```
 
@@ -185,6 +233,8 @@ hyperfine --runs 5 \
 ```bash
 # Pin to NUMA node 0 (cores 0-17 on dual Xeon Gold 6140)
 hyperfine --warmup 3 --runs 10 \
+  --export-json benchmarks/cpu-pinned.json \
+  --export-markdown benchmarks/cpu-pinned.md \
   'taskset -c 0-17 ./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null'
 ```
 
@@ -192,19 +242,29 @@ hyperfine --warmup 3 --runs 10 \
 ```bash
 # Compare discard vs real file output to isolate I/O cost
 hyperfine --warmup 3 \
+  --export-json benchmarks/output-cost.json \
+  --export-markdown benchmarks/output-cost.md \
   './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null' \
   './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /tmp/fff_out.txt'
 ```
 
 ### Hardware counters
 ```bash
+# Overview stats (perf writes to stderr)
 perf stat -e cycles,instructions,cache-references,cache-misses,branch-misses,page-faults \
-  taskset -c 0-15 ./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null
+  taskset -c 0-15 ./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null \
+  2> benchmarks/perf-stat.log
 
 # Memory bandwidth (LLC = Last Level Cache)
 perf stat -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses \
-  taskset -c 0-15 ./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null
+  taskset -c 0-15 ./fff hoyoverse /srv/fastshare/txtlog_alien_751.txt > /dev/null \
+  2> benchmarks/perf-llc.log
 ```
+
+### Log file format notes
+- **`*.json`** — hyperfine structured output with per-run times, mean, stddev, min, max
+- **`*.md`** — hyperfine markdown table (human-readable summary)
+- **`perf-*.log`** — raw `perf stat` output (counter values, IPC, miss rates)
 
 ---
 
@@ -216,5 +276,4 @@ perf stat -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses \
 | `Makefile` | Build targets: `production`, `pgo`/`pgo-use`, `clean` |
 | `DEVELOPMENT.md` | This file — master development reference |
 | `test_data.txt`, `test_10.txt` | Small test inputs |
-| `perf_report.log` | `perf` profile of fff |
-| `perf_report_grep.log` | `perf` profile of grep for comparison |
+| `benchmarks/` | Benchmark results: hyperfine JSON/MD, perf logs, legacy perf reports |
