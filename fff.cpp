@@ -310,6 +310,7 @@ void search_file(const std::string& filename, const std::string& query, bool use
     MmapGuard mmap_guard(data, file_size);
 #ifdef __linux__
     posix_fadvise(raw_fd, 0, file_size, POSIX_FADV_SEQUENTIAL);
+    madvise(data, file_size, MADV_SEQUENTIAL);
 #endif
 
     size_t q_len = query.length();
@@ -322,7 +323,7 @@ void search_file(const std::string& filename, const std::string& query, bool use
     
     // Decide on parallelization strategy
     int num_cores = get_cpu_count();
-    size_t num_threads = std::min(static_cast<size_t>(16), static_cast<size_t>(num_cores));
+    size_t num_threads = static_cast<size_t>(num_cores);
     bool parallelize = use_internal_parallelization && 
                        file_size >= 100 * 1024 * 1024 && 
                        num_threads > 1;

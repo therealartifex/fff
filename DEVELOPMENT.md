@@ -57,9 +57,10 @@ All benchmarks on: 2.9 GB file (`txtlog_alien_751.txt`), query `"hoyoverse"`, 24
 | Fused single-pass + direct fwrite | ~7.0s | ~1.6x | Approximate |
 | 16-thread parallelization | 0.634s | 17.8x | Yes (Oct 2025) |
 | + batched output + code quality pass + LTO | 0.627s | 18.0x | Yes (Feb 2026) |
+| + Profile-Guided Optimization (PGO) | 0.599s | 18.9x | Yes (Feb 2026) |
 | grep (single-threaded, for reference) | 2.632s | — | Yes (Feb 2026) |
 
-**Current measured result: 0.627s hot-cache, 1.705s cold-cache (4.19x faster than grep)**
+**Current measured result: 0.599s hot-cache with PGO+LTO, 1.705s cold-cache (4.39x faster than grep)**
 
 ---
 
@@ -76,22 +77,24 @@ Full results in `benchmarks/`. Run with `hyperfine` (10 runs, 3 warmup) on 2.9 G
 | Output to file vs /dev/null | 0.634s vs 0.635s | | No output cost — batching works |
 | vs grep (to file) | 0.628s vs 2.632s | | **4.19x faster** |
 
-### Hardware counters
-| Counter | Value | Interpretation |
-|---------|-------|---------------|
-| IPC | 0.73 | Low — CPU stalled on memory |
-| Cache miss rate | 92.8% | Nearly all accesses miss |
-| LLC miss rate | 88.9% | Data comes from DRAM |
-| Branch misses | 397M | Significant — PGO target |
-| Page faults | 59K | Reasonable for 2.9 GB mmap |
+### Hardware counters (LTO only → PGO+LTO)
+| Counter | LTO only | PGO+LTO | Change |
+|---------|----------|---------|--------|
+| Cycles | 23.2B | 21.4B | -7.9% |
+| Instructions | 17.0B | 14.5B | **-14.8%** |
+| IPC | 0.73 | 0.68 | -6.8% (expected) |
+| Cache miss rate | 92.8% | 93.1% | unchanged |
+| LLC miss rate | 88.9% | — | — |
+| Branch misses | 397.8M | 398.5M | unchanged |
+| Page faults | 59,066 | 59,069 | unchanged |
 
 ### Conclusions
-- **Workload is memory-bandwidth bound.** The 92.8% cache miss rate and 0.73 IPC mean the CPU is mostly waiting for DRAM. CPU-side code optimizations (heap alloc, sort, double-buffer removal) improved code quality but did not measurably change wall-clock time.
+- **Workload is memory-bandwidth bound.** The 93% cache miss rate and 0.68 IPC mean the CPU is mostly waiting for DRAM. CPU-side code optimizations (heap alloc, sort, double-buffer removal) improved code quality but did not measurably change wall-clock time.
+- **PGO delivered 5-6% improvement** entirely from instruction elimination (14.8% fewer instructions), not branch prediction. Branch misses remained at ~398M — they are inherently data-dependent and unpredictable.
 - **NUMA effects are negligible** for this workload.
 - **Output buffering is fully effective** — zero measurable cost to write output.
 - **Cold-cache penalty is 1.08s** (63% of hot-cache time), dominated by kernel page fault handling (system time: 0.33s hot → 1.60s cold).
 - **grep spends ~21% in `read()` syscalls** (`copy_page_to_iter`). fff avoids this via mmap.
-- **397M branch misses** is the most actionable CPU-side metric — PGO should help.
 
 ---
 
@@ -143,9 +146,8 @@ All previously identified issues have been resolved (see Completed Optimizations
 
 Prioritized by expected impact given the memory-bandwidth-bound profile.
 
-### A. Profile-Guided Optimization (PGO)
-Now available via `make pgo` + `make pgo-use`. Targets the 397M branch misses with profile-guided branch layout and code placement.
-**Estimated impact:** 5–15% (most impactful remaining optimization).
+### ~~A. Profile-Guided Optimization (PGO)~~
+Done — 5.8% wall-clock improvement (0.636s → 0.599s). Gain came from 14.8% instruction reduction via inlining/dead-code elimination, not branch prediction (398M misses unchanged). Available via `make pgo` + `make pgo-use`.
 
 ### B. Thread Count Tuning
 Currently capped at 16 threads for intra-file parallelism. With memory bandwidth saturated (92.8% cache miss rate), fewer threads may perform equally well or better. Test 4, 8, 12, 16 to find the sweet spot.
@@ -157,10 +159,10 @@ Currently capped at 16 threads for intra-file parallelism. With memory bandwidth
 ### D. `read()` vs `mmap()`
 **Rationale:** grep's profile shows 21% in `read()` syscalls, but this includes `copy_page_to_iter` (kernel→user copy) that mmap avoids. Current data suggests mmap is the right choice. Re-evaluate only if cold-cache performance becomes a priority.
 
-### ~~E. LTO~~
+### ~~D. LTO~~
 Done — `-flto` added to `CXXFLAGS` and `LDFLAGS` in Makefile.
 
-### ~~F. NUMA Awareness~~
+### ~~E. NUMA Awareness~~
 Benchmarked: CPU-pinned (0.626s) ≈ unpinned (0.627s). No measurable NUMA effect for this workload. Deprioritized.
 
 ---
