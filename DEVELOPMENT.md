@@ -24,7 +24,7 @@ Outputs matching lines with query highlighted in red (when stdout is a terminal)
 - **Long patterns (≥8 bytes):** Boyer-Moore-Horspool with shift table built once per `search_file()` call
 
 ### I/O
-- Files are `mmap`'d with `MAP_PRIVATE | MAP_POPULATE` (pre-faults pages) + `posix_fadvise(POSIX_FADV_SEQUENTIAL)` + `madvise(MADV_SEQUENTIAL)`
+- Files are `mmap`'d with `MAP_PRIVATE` + `posix_fadvise(POSIX_FADV_SEQUENTIAL)` + `madvise(MADV_SEQUENTIAL)`
 - Fused single-pass: newlines detected via AVX-512 in 16 MB chunks, lines searched immediately while data is cache-hot
 
 ### Parallelization (unified chunk-based)
@@ -155,7 +155,7 @@ Done — 5.8% wall-clock improvement (0.636s → 0.599s). Gain came from 14.8% i
 Done — removed 16-thread cap, now uses all available cores via `hardware_concurrency()`. On 72-thread system: 2.11x improvement (0.599s → 0.284s). Also reduced branch misses by 74.5% due to smaller per-thread working sets.
 
 ### ~~C. `MAP_POPULATE`~~
-Done — added `MAP_POPULATE` to all mmap calls (guarded by `#ifdef` for portability). Pre-faults pages to avoid demand faulting from 72 concurrent threads.
+Rejected — benchmarked and caused **83% regression** (0.284s → 0.519s). `MAP_POPULATE` serializes page-table setup on a single thread during `mmap()`. With 72-thread parallelism, demand faulting in parallel is strictly faster. Page faults dropped (105K → 61K) but the serial PTE setup time dominated.
 
 ### D. PGO re-profile periodically
 PGO profile should be regenerated after significant code changes to keep inlining/layout decisions optimal.

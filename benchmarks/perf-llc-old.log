@@ -1,0 +1,14 @@
+
+ Performance counter stats for './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt':
+
+          10763968      LLC-loads                                                               (50.03%)
+           8929248      LLC-load-misses                  #   82.95% of all LL-cache accesses    (50.09%)
+           1356428      LLC-stores                                                              (49.97%)
+            786359      LLC-store-misses                                                        (49.91%)
+
+       0.288138975 seconds time elapsed
+
+       8.123249000 seconds user
+       1.135712000 seconds sys
+
+

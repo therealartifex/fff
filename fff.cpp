@@ -305,11 +305,7 @@ void search_file(const std::string& filename, const std::string& query, bool use
     if (fstat(raw_fd, &sb) == -1 || sb.st_size <= 0) return;
     const size_t file_size = static_cast<size_t>(sb.st_size);
 
-    int mmap_flags = MAP_PRIVATE;
-#ifdef MAP_POPULATE
-    mmap_flags |= MAP_POPULATE;
-#endif
-    char* data = static_cast<char*>(mmap(nullptr, file_size, PROT_READ, mmap_flags, raw_fd, 0));
+    char* data = static_cast<char*>(mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE, raw_fd, 0));
     if (data == MAP_FAILED) return;
     MmapGuard mmap_guard(data, file_size);
 #ifdef __linux__
@@ -414,11 +410,7 @@ int main(int argc, char** argv) {
         }
         fm.size = static_cast<size_t>(sb.st_size);
 
-        int mmap_flags = MAP_PRIVATE;
-#ifdef MAP_POPULATE
-        mmap_flags |= MAP_POPULATE;
-#endif
-        fm.data = static_cast<char*>(mmap(nullptr, fm.size, PROT_READ, mmap_flags, fm.fd, 0));
+        fm.data = static_cast<char*>(mmap(nullptr, fm.size, PROT_READ, MAP_PRIVATE, fm.fd, 0));
         if (fm.data == MAP_FAILED) {
             fm.data = nullptr; close(fm.fd); fm.fd = -1;
             mappings.push_back(fm); continue;
