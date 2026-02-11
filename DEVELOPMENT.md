@@ -24,15 +24,16 @@ Outputs matching lines with query highlighted in red (when stdout is a terminal)
 - **Long patterns (≥8 bytes):** Boyer-Moore-Horspool with shift table built once per `search_file()` call
 
 ### I/O
-- Files are `mmap`'d with `MAP_PRIVATE` + `posix_fadvise(POSIX_FADV_SEQUENTIAL)`
+- Files are `mmap`'d with `MAP_PRIVATE | MAP_POPULATE` (pre-faults pages) + `posix_fadvise(POSIX_FADV_SEQUENTIAL)` + `madvise(MADV_SEQUENTIAL)`
 - Fused single-pass: newlines detected via AVX-512 in 16 MB chunks, lines searched immediately while data is cache-hot
 
-### Parallelization (adaptive)
+### Parallelization (unified chunk-based)
 | Scenario | Strategy |
 |----------|----------|
-| 1 file | Split into line-aligned chunks across up to 16 threads |
-| Few files (≤ cores/4) | Each file processed sequentially with internal 16-thread parallelization |
-| Many files (> cores/4) | Work queue: one thread per core, each pulls files from a shared queue (no internal parallelization) |
+| 1 file | Split into line-aligned chunks across all available cores |
+| Multiple files | All files mmap'd upfront, split into line-aligned chunks proportional to size, distributed across all cores via lock-free work queue |
+
+For example, 24 files on a 72-core system: each file gets ~3 chunks, all 72 cores pull chunks from a single work queue.
 
 ### Output
 - Matching lines written directly into a thread-local 1 MB output buffer (no intermediate staging)
@@ -41,7 +42,7 @@ Outputs matching lines with query highlighted in red (when stdout is a terminal)
 
 ### Resource Management
 - RAII guards for file descriptors (`FdGuard`) and mmap regions (`MmapGuard`)
-- Lock-free `std::atomic<size_t>` file queue index for multi-file work distribution
+- Lock-free `std::atomic<size_t>` work queue index for chunk distribution
 - Thread-local reusable vectors for match positions and output buffering
 
 ---
@@ -58,9 +59,10 @@ All benchmarks on: 2.9 GB file (`txtlog_alien_751.txt`), query `"hoyoverse"`, 24
 | 16-thread parallelization | 0.634s | 17.8x | Yes (Oct 2025) |
 | + batched output + code quality pass + LTO | 0.627s | 18.0x | Yes (Feb 2026) |
 | + Profile-Guided Optimization (PGO) | 0.599s | 18.9x | Yes (Feb 2026) |
-| grep (single-threaded, for reference) | 2.632s | — | Yes (Feb 2026) |
+| All-cores parallelism (72 threads) + madvise + PGO | 0.284s | 39.8x | Yes (Feb 2026) |
+| grep (single-threaded, for reference) | 2.669s | — | Yes (Feb 2026) |
 
-**Current measured result: 0.599s hot-cache with PGO+LTO, 1.705s cold-cache (4.39x faster than grep)**
+**Current measured result: 0.284s hot-cache with PGO + LTO + all-cores, 10.2 GB/s throughput (9.44x faster than grep)**
 
 ---
 
@@ -71,29 +73,29 @@ Full results in `benchmarks/`. Run with `hyperfine` (10 runs, 3 warmup) on 2.9 G
 ### Timing
 | Benchmark | Mean | Stddev | Key takeaway |
 |-----------|------|--------|-------------|
-| Hot-cache | 0.627s | ±0.005s | Tight variance (0.8% CV) |
-| Cold-cache | 1.705s | ±0.016s | 2.72x slower — I/O dominates |
-| CPU-pinned (NUMA 0) | 0.626s | ±0.004s | Identical to unpinned |
-| Output to file vs /dev/null | 0.634s vs 0.635s | | No output cost — batching works |
-| vs grep (to file) | 0.628s vs 2.632s | | **4.19x faster** |
+| Hot-cache (72 threads, PGO+LTO) | 0.284s | ±0.020s | 10.2 GB/s throughput |
+| Output to file vs /dev/null | 0.286s vs 0.274s | | ~12ms (4%) output cost |
+| vs grep (to file) | 0.283s vs 2.669s | | **9.44x faster** |
 
-### Hardware counters (LTO only → PGO+LTO)
-| Counter | LTO only | PGO+LTO | Change |
-|---------|----------|---------|--------|
-| Cycles | 23.2B | 21.4B | -7.9% |
-| Instructions | 17.0B | 14.5B | **-14.8%** |
-| IPC | 0.73 | 0.68 | -6.8% (expected) |
-| Cache miss rate | 92.8% | 93.1% | unchanged |
-| LLC miss rate | 88.9% | — | — |
-| Branch misses | 397.8M | 398.5M | unchanged |
-| Page faults | 59,066 | 59,069 | unchanged |
+### Hardware counters (16-thread PGO → 72-thread PGO)
+| Counter | 16-thread PGO | 72-thread PGO | Change |
+|---------|--------------|---------------------|--------|
+| Cycles | 21.4B | 23.0B | +7.5% (more cores active) |
+| Instructions | 14.5B | 14.8B | +2% |
+| IPC | 0.68 | 0.64 | -5.9% (more memory contention) |
+| Cache miss rate | 93.1% | 89.9% | **-3.4%** |
+| LLC load miss rate | 88.9% | 82.9% | **-6.7%** |
+| Branch misses | 398.5M | 101.5M | **-74.5%** |
+| Page faults | 59,069 | 105,187 | +78% (more concurrent faults) |
+| Sys time | 0.38s | 1.13s | +197% (kernel overhead) |
 
 ### Conclusions
-- **Workload is memory-bandwidth bound.** The 93% cache miss rate and 0.68 IPC mean the CPU is mostly waiting for DRAM. CPU-side code optimizations (heap alloc, sort, double-buffer removal) improved code quality but did not measurably change wall-clock time.
-- **PGO delivered 5-6% improvement** entirely from instruction elimination (14.8% fewer instructions), not branch prediction. Branch misses remained at ~398M — they are inherently data-dependent and unpredictable.
-- **NUMA effects are negligible** for this workload.
-- **Output buffering is fully effective** — zero measurable cost to write output.
-- **Cold-cache penalty is 1.08s** (63% of hot-cache time), dominated by kernel page fault handling (system time: 0.33s hot → 1.60s cold).
+- **All-cores parallelism was a 2.11x improvement** (0.599s → 0.284s). The single biggest gain since the initial 16-thread parallelization.
+- **Throughput: 10.2 GB/s** — using 32% of system memory bandwidth (4 of 12 DDR4-2666 channels populated). Theoretical ceiling is ~32 GB/s.
+- **Branch misses dropped 74.5%** (398M → 101M). Smaller per-thread chunks (~40MB vs ~180MB) fit branch predictor tables much better.
+- **LLC miss rate improved** from 88.9% → 82.9%. Smaller chunks also improve cache locality.
+- **Page faults nearly doubled** (59K → 105K) and sys time tripled (0.38s → 1.13s) — the cost of 72 threads all faulting concurrently. `MAP_POPULATE` could help here.
+- **Output buffering still effective** — only ~12ms (4%) cost to write to a real file.
 - **grep spends ~21% in `read()` syscalls** (`copy_page_to_iter`). fff avoids this via mmap.
 
 ---
@@ -147,23 +149,28 @@ All previously identified issues have been resolved (see Completed Optimizations
 Prioritized by expected impact given the memory-bandwidth-bound profile.
 
 ### ~~A. Profile-Guided Optimization (PGO)~~
-Done — 5.8% wall-clock improvement (0.636s → 0.599s). Gain came from 14.8% instruction reduction via inlining/dead-code elimination, not branch prediction (398M misses unchanged). Available via `make pgo` + `make pgo-use`.
+Done — 5.8% wall-clock improvement (0.636s → 0.599s). Gain came from 14.8% instruction reduction via inlining/dead-code elimination. Available via `make pgo` + `make pgo-use`.
 
-### B. Thread Count Tuning
-Currently capped at 16 threads for intra-file parallelism. With memory bandwidth saturated (92.8% cache miss rate), fewer threads may perform equally well or better. Test 4, 8, 12, 16 to find the sweet spot.
+### ~~B. Thread Count Tuning~~
+Done — removed 16-thread cap, now uses all available cores via `hardware_concurrency()`. On 72-thread system: 2.11x improvement (0.599s → 0.284s). Also reduced branch misses by 74.5% due to smaller per-thread working sets.
 
-### C. `MAP_POPULATE` + `madvise(MADV_SEQUENTIAL)`
-**Rationale:** `MAP_POPULATE` pre-faults all pages at mmap time (eliminates 59K on-demand page faults). `madvise(MADV_SEQUENTIAL)` provides mmap-specific readahead hint (complements `posix_fadvise`).
-**Estimated impact:** Significant for cold-cache (1.705s → potentially sub-1.2s). Minimal for hot-cache.
+### ~~C. `MAP_POPULATE`~~
+Done — added `MAP_POPULATE` to all mmap calls (guarded by `#ifdef` for portability). Pre-faults pages to avoid demand faulting from 72 concurrent threads.
 
-### D. `read()` vs `mmap()`
-**Rationale:** grep's profile shows 21% in `read()` syscalls, but this includes `copy_page_to_iter` (kernel→user copy) that mmap avoids. Current data suggests mmap is the right choice. Re-evaluate only if cold-cache performance becomes a priority.
+### D. PGO re-profile periodically
+PGO profile should be regenerated after significant code changes to keep inlining/layout decisions optimal.
 
-### ~~D. LTO~~
+### E. `read()` vs `mmap()`
+Deprioritized — current data favors mmap. Re-evaluate only if cold-cache becomes a priority.
+
+### ~~F. LTO~~
 Done — `-flto` added to `CXXFLAGS` and `LDFLAGS` in Makefile.
 
-### ~~E. NUMA Awareness~~
-Benchmarked: CPU-pinned (0.626s) ≈ unpinned (0.627s). No measurable NUMA effect for this workload. Deprioritized.
+### ~~G. NUMA Awareness~~
+Benchmarked: CPU-pinned (0.626s) ≈ unpinned (0.627s). No measurable NUMA effect. Deprioritized.
+
+### ~~H. madvise(MADV_SEQUENTIAL)~~
+Done — added alongside `posix_fadvise` for mmap-level sequential readahead hint.
 
 ---
 

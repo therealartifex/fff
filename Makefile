@@ -14,7 +14,8 @@ FILE ?= /srv/fastshare/txtlog_alien_751.txt
 
 .PHONY: all clean production pgo pgo-use \
         bench-hot bench-cold bench-vs-grep bench-before-after \
-        bench-output-cost bench-perf bench-perf-llc bench-all
+        bench-output-cost bench-perf bench-perf-llc bench-all \
+        bench-hot-short bench-perf-short bench-perf-llc-short
 
 all: production
 
@@ -88,7 +89,33 @@ bench-perf-llc: $(TARGET)
 	  2> $(BENCHDIR)/perf-llc.log
 	@cat $(BENCHDIR)/perf-llc.log
 
-bench-all: bench-hot bench-vs-grep bench-output-cost bench-perf bench-perf-llc
+# --- Short-pattern benchmarks (AVX-512 prefilter path, <8 chars) ---
+
+SHORT_QUERY ?= hoyover
+
+bench-hot-short: $(TARGET)
+	@mkdir -p $(BENCHDIR)
+	hyperfine --warmup 3 --runs 10 \
+	  --export-json $(BENCHDIR)/hot-cache-short-pattern.json \
+	  --export-markdown $(BENCHDIR)/hot-cache-short-pattern.md \
+	  './$(TARGET) $(SHORT_QUERY) $(FILE) > /dev/null'
+
+bench-perf-short: $(TARGET)
+	@mkdir -p $(BENCHDIR)
+	perf stat -e cycles,instructions,cache-references,cache-misses,branch-misses,page-faults \
+	  ./$(TARGET) $(SHORT_QUERY) $(FILE) > /dev/null \
+	  2> $(BENCHDIR)/perf-stat-short-pattern.log
+	@cat $(BENCHDIR)/perf-stat-short-pattern.log
+
+bench-perf-llc-short: $(TARGET)
+	@mkdir -p $(BENCHDIR)
+	perf stat -e LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses \
+	  ./$(TARGET) $(SHORT_QUERY) $(FILE) > /dev/null \
+	  2> $(BENCHDIR)/perf-llc-short-pattern.log
+	@cat $(BENCHDIR)/perf-llc-short-pattern.log
+
+bench-all: bench-hot bench-vs-grep bench-output-cost bench-perf bench-perf-llc \
+           bench-hot-short bench-perf-short bench-perf-llc-short
 	@echo "All benchmarks complete. Results in $(BENCHDIR)/"
 
 clean:

@@ -23,8 +23,8 @@
 // Global mutex for synchronized output
 std::mutex output_mutex;
 
-// File queue for multi-file parallelization
-std::atomic<size_t> file_queue_index{0};
+// Lock-free work queue index (used for chunk distribution)
+std::atomic<size_t> work_queue_index{0};
 
 // Thread-local reusable match positions vector
 thread_local std::vector<size_t> match_positions;
@@ -305,7 +305,11 @@ void search_file(const std::string& filename, const std::string& query, bool use
     if (fstat(raw_fd, &sb) == -1 || sb.st_size <= 0) return;
     const size_t file_size = static_cast<size_t>(sb.st_size);
 
-    char* data = static_cast<char*>(mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE, raw_fd, 0));
+    int mmap_flags = MAP_PRIVATE;
+#ifdef MAP_POPULATE
+    mmap_flags |= MAP_POPULATE;
+#endif
+    char* data = static_cast<char*>(mmap(nullptr, file_size, PROT_READ, mmap_flags, raw_fd, 0));
     if (data == MAP_FAILED) return;
     MmapGuard mmap_guard(data, file_size);
 #ifdef __linux__
@@ -371,46 +375,115 @@ int main(int argc, char** argv) {
 
     std::string query = argv[1];
     std::vector<std::string> files(argv + 2, argv + argc);
-    
-    int num_cores = get_cpu_count();
     size_t num_files = files.size();
-    
-    // Strategy: Choose parallelization approach based on workload
-    // - Few large files (files <= cores/4): Use internal file parallelization
-    // - Many files (files > cores/4): Use work queue across files
-    
+
     if (num_files == 1) {
-        // Single file: use internal parallelization (16 threads)
         search_file(files[0], query, true);
-    } else if (num_files <= static_cast<size_t>(num_cores) / 4) {
-        // Few files: process sequentially with internal parallelization
-        for (const auto& file : files) {
-            search_file(file, query, true);
+        return 0;
+    }
+
+    // Multi-file: unified chunk-based distribution across all cores
+    int num_cores = get_cpu_count();
+    size_t num_threads = static_cast<size_t>(num_cores);
+    size_t q_len = query.length();
+
+    uint32_t bmh_shift[256];
+    if (q_len >= 8) {
+        build_bmh_table(query.c_str(), q_len, bmh_shift);
+    }
+
+    // Open and mmap all files
+    struct FileMapping {
+        char* data = nullptr;
+        size_t size = 0;
+        int fd = -1;
+    };
+    std::vector<FileMapping> mappings;
+    mappings.reserve(num_files);
+    size_t total_size = 0;
+
+    for (const auto& filename : files) {
+        FileMapping fm;
+        fm.fd = open(filename.c_str(), O_RDONLY);
+        if (fm.fd == -1) { mappings.push_back(fm); continue; }
+
+        struct stat sb;
+        if (fstat(fm.fd, &sb) == -1 || sb.st_size <= 0) {
+            close(fm.fd); fm.fd = -1;
+            mappings.push_back(fm); continue;
         }
-    } else {
-        // Many files: use work queue parallelization
-        file_queue_index.store(0, std::memory_order_relaxed);
-        size_t num_threads = std::min(static_cast<size_t>(num_cores), num_files);
-        std::vector<std::thread> threads;
-        
-        // Worker function: pull files from queue (lock-free)
-        auto worker = [&files, &query]() {
-            while (true) {
-                size_t file_idx = file_queue_index.fetch_add(1, std::memory_order_relaxed);
-                if (file_idx >= files.size()) break;
-                search_file(files[file_idx], query, false);
+        fm.size = static_cast<size_t>(sb.st_size);
+
+        int mmap_flags = MAP_PRIVATE;
+#ifdef MAP_POPULATE
+        mmap_flags |= MAP_POPULATE;
+#endif
+        fm.data = static_cast<char*>(mmap(nullptr, fm.size, PROT_READ, mmap_flags, fm.fd, 0));
+        if (fm.data == MAP_FAILED) {
+            fm.data = nullptr; close(fm.fd); fm.fd = -1;
+            mappings.push_back(fm); continue;
+        }
+#ifdef __linux__
+        posix_fadvise(fm.fd, 0, fm.size, POSIX_FADV_SEQUENTIAL);
+        madvise(fm.data, fm.size, MADV_SEQUENTIAL);
+#endif
+        total_size += fm.size;
+        mappings.push_back(fm);
+    }
+
+    // Build line-aligned work chunks across all files, proportional to size
+    struct WorkChunk {
+        const char* data;
+        size_t start;
+        size_t end;
+    };
+    std::vector<WorkChunk> chunks;
+
+    size_t target_chunk_bytes = (num_threads > 0) ? total_size / num_threads : total_size;
+    if (target_chunk_bytes < 1024 * 1024) target_chunk_bytes = 1024 * 1024;
+
+    for (size_t fi = 0; fi < mappings.size(); ++fi) {
+        auto& fm = mappings[fi];
+        if (!fm.data || fm.size == 0) continue;
+
+        size_t file_chunks = std::max<size_t>(1, (fm.size + target_chunk_bytes / 2) / target_chunk_bytes);
+        size_t chunk_size = fm.size / file_chunks;
+
+        size_t prev = 0;
+        for (size_t c = 1; c < file_chunks; ++c) {
+            size_t target = c * chunk_size;
+            while (target < fm.size && fm.data[target] != '\n') ++target;
+            if (target < fm.size) {
+                chunks.push_back({fm.data, prev, target + 1});
+                prev = target + 1;
             }
-        };
-        
-        // Launch worker threads
-        for (size_t t = 0; t < num_threads; ++t) {
-            threads.emplace_back(worker);
         }
-        
-        // Wait for completion
-        for (auto& th : threads) {
-            th.join();
+        chunks.push_back({fm.data, prev, fm.size});
+    }
+
+    // Distribute chunks across all cores via lock-free work queue
+    work_queue_index.store(0, std::memory_order_relaxed);
+    size_t actual_threads = std::min(num_threads, chunks.size());
+    std::vector<std::thread> threads;
+
+    auto worker = [&chunks, &query, &bmh_shift]() {
+        while (true) {
+            size_t ci = work_queue_index.fetch_add(1, std::memory_order_relaxed);
+            if (ci >= chunks.size()) break;
+            auto& c = chunks[ci];
+            process_file_range(c.data, c.start, c.end, query, bmh_shift);
         }
+    };
+
+    for (size_t t = 0; t < actual_threads; ++t) {
+        threads.emplace_back(worker);
+    }
+    for (auto& th : threads) th.join();
+
+    // Cleanup mmaps and file descriptors
+    for (auto& fm : mappings) {
+        if (fm.data) munmap(fm.data, fm.size);
+        if (fm.fd >= 0) close(fm.fd);
     }
 
     return 0;
