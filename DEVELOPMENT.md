@@ -60,9 +60,10 @@ All benchmarks on: 2.9 GB file (`txtlog_alien_751.txt`), query `"hoyoverse"`, 24
 | + batched output + code quality pass + LTO | 0.627s | 18.0x | Yes (Feb 2026) |
 | + Profile-Guided Optimization (PGO) | 0.599s | 18.9x | Yes (Feb 2026) |
 | All-cores parallelism (72 threads) + madvise + PGO | 0.284s | 39.8x | Yes (Feb 2026) |
-| grep (single-threaded, for reference) | 2.669s | — | Yes (Feb 2026) |
+| + unified chunk distribution (multi-file) + dual-path PGO | 0.285s | 39.6x | Yes (Feb 2026) |
+| grep (single-threaded, for reference) | 2.672s | — | Yes (Feb 2026) |
 
-**Current measured result: 0.284s hot-cache with PGO + LTO + all-cores, 10.2 GB/s throughput (9.44x faster than grep)**
+**Current measured result: 0.285s hot-cache with PGO + LTO + all-cores, 10.2 GB/s throughput (9.21x faster than grep)**
 
 ---
 
@@ -70,32 +71,45 @@ All benchmarks on: 2.9 GB file (`txtlog_alien_751.txt`), query `"hoyoverse"`, 24
 
 Full results in `benchmarks/`. Run with `hyperfine` (10 runs, 3 warmup) on 2.9 GB file.
 
-### Timing
+### Timing (long pattern — BMH path, "hoyoverse")
 | Benchmark | Mean | Stddev | Key takeaway |
 |-----------|------|--------|-------------|
-| Hot-cache (72 threads, PGO+LTO) | 0.284s | ±0.020s | 10.2 GB/s throughput |
-| Output to file vs /dev/null | 0.286s vs 0.274s | | ~12ms (4%) output cost |
-| vs grep (to file) | 0.283s vs 2.669s | | **9.44x faster** |
+| Hot-cache (72 threads, PGO+LTO) | 0.285s | ±0.011s | 10.2 GB/s throughput |
+| Output to file vs /dev/null | 0.300s vs 0.285s | | ~15ms (5%) output cost |
+| vs grep (to file) | 0.290s vs 2.672s | | **9.21x faster** |
 
-### Hardware counters (16-thread PGO → 72-thread PGO)
+### Timing (short pattern — AVX-512 prefilter path, "hoyover")
+| Benchmark | Mean | Stddev | Key takeaway |
+|-----------|------|--------|-------------|
+| Hot-cache (72 threads, PGO+LTO) | 0.281s | ±0.011s | Slightly faster than BMH |
+
+### Hardware counters (long pattern vs short pattern, 72-thread PGO)
+| Counter | Long (BMH) | Short (AVX-512) | Difference |
+|---------|------------|-----------------|------------|
+| Cycles | 23.9B | 22.6B | -5.4% |
+| Instructions | 15.2B | 11.0B | **-27.9%** |
+| IPC | 0.64 | 0.48 | -25% (more data-dependent branches) |
+| Cache miss rate | 89.6% | 90.0% | ~same |
+| LLC load miss rate | 79.9% | 84.4% | +5.6% |
+| Branch misses | 108M | 129M | +19.4% |
+| Page faults | 105K | 105K | same |
+
+### Hardware counters (historical: 16-thread → 72-thread)
 | Counter | 16-thread PGO | 72-thread PGO | Change |
 |---------|--------------|---------------------|--------|
-| Cycles | 21.4B | 23.0B | +7.5% (more cores active) |
-| Instructions | 14.5B | 14.8B | +2% |
+| Cycles | 21.4B | 23.9B | +11.7% (more cores active) |
+| Instructions | 14.5B | 15.2B | +4.8% |
 | IPC | 0.68 | 0.64 | -5.9% (more memory contention) |
-| Cache miss rate | 93.1% | 89.9% | **-3.4%** |
-| LLC load miss rate | 88.9% | 82.9% | **-6.7%** |
-| Branch misses | 398.5M | 101.5M | **-74.5%** |
-| Page faults | 59,069 | 105,187 | +78% (more concurrent faults) |
-| Sys time | 0.38s | 1.13s | +197% (kernel overhead) |
+| Branch misses | 398.5M | 108M | **-72.9%** |
+| Page faults | 59,069 | 105,189 | +78% (more concurrent faults) |
 
 ### Conclusions
-- **All-cores parallelism was a 2.11x improvement** (0.599s → 0.284s). The single biggest gain since the initial 16-thread parallelization.
+- **All-cores parallelism was a 2.11x improvement** (0.599s → 0.285s). The single biggest gain since the initial 16-thread parallelization.
 - **Throughput: 10.2 GB/s** — using 32% of system memory bandwidth (4 of 12 DDR4-2666 channels populated). Theoretical ceiling is ~32 GB/s.
-- **Branch misses dropped 74.5%** (398M → 101M). Smaller per-thread chunks (~40MB vs ~180MB) fit branch predictor tables much better.
-- **LLC miss rate improved** from 88.9% → 82.9%. Smaller chunks also improve cache locality.
-- **Page faults nearly doubled** (59K → 105K) and sys time tripled (0.38s → 1.13s) — the cost of 72 threads all faulting concurrently. `MAP_POPULATE` could help here.
-- **Output buffering still effective** — only ~12ms (4%) cost to write to a real file.
+- **Both search paths hit the same memory-bandwidth wall** at ~0.28s. The AVX-512 short-pattern path uses 28% fewer instructions but has lower IPC (0.48 vs 0.64) due to data-dependent branching in the prefilter loop.
+- **Branch misses dropped ~73%** (398M → 108M) going from 16 to 72 threads. Smaller per-thread chunks (~40MB vs ~180MB) fit branch predictor tables much better.
+- **`MAP_POPULATE` is harmful** for this workload — it serializes PTE setup on one thread, causing 83% regression. Parallel demand faulting from 72 threads is faster.
+- **Output buffering still effective** — only ~15ms (5%) cost to write to a real file.
 - **grep spends ~21% in `read()` syscalls** (`copy_page_to_iter`). fff avoids this via mmap.
 
 ---
