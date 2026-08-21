@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #ifdef __linux__
 #include <sys/sysinfo.h>
+#include <sys/syscall.h>
 #include <sched.h>
 #endif
 #ifdef __APPLE__
@@ -12,6 +13,7 @@
 #include <atomic>
 #include <array>
 #include <iostream>
+#include <cstdio>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -80,8 +82,6 @@ static std::array<uint8_t, 256> g_freq;
 
 static void init_freq_table() {
     g_freq.fill(0);
-    // Rough ordering, most-common -> less-common. Exact values are not critical;
-    // the goal is only to avoid selecting very common bytes (space, e, t, ...).
     const char* common = " etaoinsrhldcumfpgwybvkxjqz"
                          "ETAOINSRHLDCUMFPGWYBVKXJQZ"
                          "0123456789"
@@ -89,15 +89,11 @@ static void init_freq_table() {
     uint8_t rank = 255;
     for (const char* c = common; *c; ++c) {
         uint8_t b = static_cast<uint8_t>(*c);
-        if (g_freq[b] == 0) {           // first (most common) occurrence wins
-            g_freq[b] = rank;
-            if (rank > 1) --rank;
-        }
+        if (g_freq[b] == 0) { g_freq[b] = rank; if (rank > 1) --rank; }
     }
     g_freq[static_cast<uint8_t>('\n')] = 255; // never filter on newline
 }
 
-// Precomputed pattern descriptor.
 struct Pattern {
     const char* p = nullptr;
     size_t m = 0;
@@ -108,11 +104,9 @@ struct Pattern {
 static Pattern make_pattern(const char* p, size_t m) {
     Pattern pat{p, m, 0, 0};
     if (m == 0) return pat;
-    // rarest byte
     for (size_t k = 1; k < m; ++k)
         if (g_freq[(uint8_t)p[k]] < g_freq[(uint8_t)pat.p[pat.i1]]) pat.i1 = k;
     if (m == 1) { pat.i2 = pat.i1; return pat; }
-    // second-rarest byte at a different offset
     pat.i2 = (pat.i1 == 0) ? 1 : 0;
     for (size_t k = 0; k < m; ++k)
         if (k != pat.i1 && g_freq[(uint8_t)p[k]] < g_freq[(uint8_t)p[pat.i2]]) pat.i2 = k;
@@ -131,9 +125,6 @@ static inline size_t line_end(const char* data, size_t from, size_t hi) {
     return from; // index of '\n', or hi
 }
 
-// ---------------------------------------------------------------------------
-// Emit one matching line [ls, le) (le exclusive, points at '\n' or range end).
-// ---------------------------------------------------------------------------
 static inline void emit_plain(const char* data, size_t ls, size_t le) {
     size_t len = le - ls;
     size_t need = len + 1;
@@ -181,9 +172,6 @@ static inline void emit_line(const char* data, size_t ls, size_t le, const Patte
 
 // ---------------------------------------------------------------------------
 // Single-pass search over a thread's line-aligned range [start, end).
-// Two-rare-byte AVX-512 prefilter; line boundaries derived lazily around each
-// verified match. After emitting a line, the scan jumps to the line end, so no
-// line is ever emitted twice and dense lines aren't re-scanned.
 // ---------------------------------------------------------------------------
 static void process_range(const char* data, size_t start, size_t end, const Pattern& pat) {
     const size_t m = pat.m;
@@ -195,8 +183,6 @@ static void process_range(const char* data, size_t start, size_t end, const Patt
     const __m512i v2 = _mm512_set1_epi8(pat.p[pat.i2]);
 
     size_t pos = start;
-    // Main SIMD loop: both 64-byte loads and full verify stay in-bounds while
-    // pos + (m-1) + 64 <= end.
     while (pos + (m - 1) + ZMM_SIZE <= end) {
         __mmask64 mask =
             _mm512_cmpeq_epi8_mask(_mm512_loadu_si512((const void*)(data + pos + pat.i1)), v1) &
@@ -209,7 +195,7 @@ static void process_range(const char* data, size_t start, size_t end, const Patt
                 size_t ls = line_begin(data, s, start);
                 size_t le = line_end(data, s + m, end);
                 emit_line(data, ls, le, pat);
-                pos = le;          // skip the rest of this line
+                pos = le;
                 jumped = true;
                 break;
             }
@@ -218,7 +204,6 @@ static void process_range(const char* data, size_t start, size_t end, const Patt
         if (!jumped) pos += ZMM_SIZE;
     }
 
-    // Scalar tail for the final < (m-1)+64 bytes.
     while (pos + m <= end) {
         if (data[pos + pat.i1] == pat.p[pat.i1] &&
             data[pos + pat.i2] == pat.p[pat.i2] &&
@@ -246,64 +231,202 @@ struct FdGuard {
     FdGuard& operator=(const FdGuard&) = delete;
 };
 
-struct MmapGuard {
-    void* addr;
-    size_t len;
-    MmapGuard(void* addr, size_t len) : addr(addr), len(len) {}
-    ~MmapGuard() { if (addr != MAP_FAILED) munmap(addr, len); }
-    MmapGuard(const MmapGuard&) = delete;
-    MmapGuard& operator=(const MmapGuard&) = delete;
+// ---------------------------------------------------------------------------
+// Work chunk: a line-aligned [start, end) region of one mapped file.
+// ---------------------------------------------------------------------------
+struct WorkChunk { const char* data; size_t start; size_t end; };
+
+// Split a mapped file into line-aligned chunks of ~target_chunk_bytes.
+static void build_chunks(const char* data, size_t size, size_t target_chunk_bytes,
+                         std::vector<WorkChunk>& chunks) {
+    if (!data || size == 0) return;
+    size_t file_chunks = std::max<size_t>(1, (size + target_chunk_bytes / 2) / target_chunk_bytes);
+    size_t chunk_size = size / file_chunks;
+    size_t prev = 0;
+    for (size_t c = 1; c < file_chunks; ++c) {
+        size_t target = c * chunk_size;
+        while (target < size && data[target] != '\n') ++target;
+        if (target < size) { chunks.push_back({data, prev, target + 1}); prev = target + 1; }
+    }
+    chunks.push_back({data, prev, size});
+}
+
+// Flat lock-free work queue across all chunks (used when NUMA is unavailable
+// or not beneficial). Identical distribution to the previous multi-file path.
+static void run_flat(std::vector<WorkChunk>& chunks, size_t num_threads, const Pattern& pat) {
+    std::atomic<size_t> work_index{0};
+    size_t actual = std::min(num_threads, chunks.size());
+    std::vector<std::thread> threads;
+    auto worker = [&chunks, &pat, &work_index]() {
+        for (;;) {
+            size_t ci = work_index.fetch_add(1, std::memory_order_relaxed);
+            if (ci >= chunks.size()) break;
+            process_range(chunks[ci].data, chunks[ci].start, chunks[ci].end, pat);
+        }
+    };
+    for (size_t t = 0; t < actual; ++t) threads.emplace_back(worker);
+    for (auto& th : threads) th.join();
+}
+
+// ---------------------------------------------------------------------------
+// NUMA-aware distribution (Linux, dependency-free: sysfs + move_pages/affinity
+// syscalls). Each chunk is assigned to the node whose memory physically holds
+// it; each node's cores drain only their own queue (no cross-node stealing,
+// since extra remote-reading cores add contention, not bandwidth, on a
+// memory-bound scan). Falls back to the flat queue whenever NUMA can't help.
+// ---------------------------------------------------------------------------
+#ifdef __linux__
+constexpr int NUMA_MAX_NODES = 64;
+
+struct NumaTopo {
+    std::vector<int> node_ids;          // worker nodes (online, >=1 cpu)
+    std::vector<cpu_set_t> masks;       // parallel to node_ids
+    std::vector<int> cpu_count;         // parallel to node_ids
+    bool usable() const {
+        return node_ids.size() >= 2 && node_ids.size() <= (size_t)NUMA_MAX_NODES;
+    }
 };
 
-void search_file(const std::string& filename, const Pattern& pat,
-                 bool use_internal_parallelization = true) {
-    int raw_fd = open(filename.c_str(), O_RDONLY);
-    if (raw_fd == -1) return;
-    FdGuard fd_guard(raw_fd);
+static void parse_int_list(const char* s, std::vector<int>& out) {
+    while (*s) {
+        while (*s == ',' || *s == ' ' || *s == '\n' || *s == '\t') ++s;
+        if (*s < '0' || *s > '9') break;
+        int a = 0;
+        while (*s >= '0' && *s <= '9') { a = a * 10 + (*s - '0'); ++s; }
+        int b = a;
+        if (*s == '-') { ++s; b = 0; while (*s >= '0' && *s <= '9') { b = b * 10 + (*s - '0'); ++s; } }
+        for (int v = a; v <= b; ++v) out.push_back(v);
+    }
+}
 
-    struct stat sb;
-    if (fstat(raw_fd, &sb) == -1 || sb.st_size <= 0) return;
-    const size_t file_size = static_cast<size_t>(sb.st_size);
+static bool read_sysfs(const char* path, char* buf, size_t n) {
+    FILE* f = fopen(path, "r");
+    if (!f) return false;
+    size_t r = fread(buf, 1, n - 1, f);
+    buf[r] = '\0';
+    fclose(f);
+    return r > 0;
+}
 
-    char* data = static_cast<char*>(mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE, raw_fd, 0));
-    if (data == MAP_FAILED) return;
-    MmapGuard mmap_guard(data, file_size);
-#ifdef __linux__
-    posix_fadvise(raw_fd, 0, file_size, POSIX_FADV_SEQUENTIAL);
-    madvise(data, file_size, MADV_SEQUENTIAL);
-#endif
+static NumaTopo detect_numa() {
+    NumaTopo t;
+    char buf[8192];
+    if (!read_sysfs("/sys/devices/system/node/online", buf, sizeof(buf))) return t;
+    std::vector<int> online;
+    parse_int_list(buf, online);
+    for (int nd : online) {
+        char path[128];
+        snprintf(path, sizeof(path), "/sys/devices/system/node/node%d/cpulist", nd);
+        if (!read_sysfs(path, buf, sizeof(buf))) continue;
+        std::vector<int> cpus;
+        parse_int_list(buf, cpus);
+        if (cpus.empty()) continue; // CPU-less node (e.g. PMEM/GPU): never a worker
+        cpu_set_t set; CPU_ZERO(&set);
+        for (int c : cpus) if (c >= 0 && c < CPU_SETSIZE) CPU_SET(c, &set);
+        t.node_ids.push_back(nd);
+        t.masks.push_back(set);
+        t.cpu_count.push_back((int)cpus.size());
+    }
+    return t;
+}
 
-    int num_cores = get_cpu_count();
-    size_t num_threads = static_cast<size_t>(num_cores);
-    bool parallelize = use_internal_parallelization &&
-                       file_size >= 100 * 1024 * 1024 &&
-                       num_threads > 1;
+static long move_pages_query(int count, void** pages, int* status) {
+    return syscall(SYS_move_pages, 0, (unsigned long)count, pages,
+                   (const int*)nullptr, status, 0);
+}
 
-    if (!parallelize) {
-        process_range(data, 0, file_size, pat);
-        return;
+static void run_numa(std::vector<WorkChunk>& chunks, const NumaTopo& topo, const Pattern& pat) {
+    const int NN = (int)topo.node_ids.size();
+    int max_node = 0;
+    for (int nd : topo.node_ids) max_node = std::max(max_node, nd);
+    std::vector<int> id2idx(max_node + 1, -1);
+    for (int i = 0; i < NN; ++i) id2idx[topo.node_ids[i]] = i;
+
+    // Sample up to 3 pages per chunk and query their physical node in one pass.
+    const size_t C = chunks.size();
+    std::vector<void*> pages;
+    pages.reserve(C * 3);
+    for (const auto& c : chunks) {
+        size_t len = c.end - c.start;
+        pages.push_back((void*)(c.data + c.start));
+        pages.push_back((void*)(c.data + c.start + len / 2));
+        pages.push_back((void*)(c.data + (c.end > 0 ? c.end - 1 : c.start)));
+    }
+    std::vector<int> status(pages.size(), -1);
+    const int BATCH = 512;
+    for (size_t off = 0; off < pages.size(); off += BATCH) {
+        int cnt = (int)std::min((size_t)BATCH, pages.size() - off);
+        move_pages_query(cnt, pages.data() + off, status.data() + off);
     }
 
-    // Large files: line-aligned chunks, one per core.
-    size_t chunk_size = file_size / num_threads;
+    // Assign each chunk to a worker node: majority vote of its samples; chunks
+    // whose pages are unknown (not resident) or on a non-worker node are spread
+    // round-robin so every chunk lands on a node that has cores.
+    std::vector<std::vector<WorkChunk>> node_chunks(NN);
+    size_t rr = 0;
+    for (size_t i = 0; i < C; ++i) {
+        int votes[NUMA_MAX_NODES] = {0};
+        bool any = false;
+        for (int k = 0; k < 3; ++k) {
+            int st = status[i * 3 + k];
+            if (st >= 0 && st <= max_node && id2idx[st] >= 0) { votes[id2idx[st]]++; any = true; }
+        }
+        int dest;
+        if (any) {
+            int best = 0;
+            for (int j = 1; j < NN; ++j) if (votes[j] > votes[best]) best = j;
+            dest = best;
+        } else {
+            dest = (int)(rr++ % NN);
+        }
+        node_chunks[dest].push_back(chunks[i]);
+    }
+
+    std::vector<std::atomic<size_t>> node_index(NN);
+    for (int i = 0; i < NN; ++i) node_index[i].store(0, std::memory_order_relaxed);
+
     std::vector<std::thread> threads;
-    std::vector<size_t> boundaries;
-    boundaries.push_back(0);
-    for (size_t t = 1; t < num_threads; ++t) {
-        size_t target = t * chunk_size;
-        while (target < file_size && data[target] != '\n') ++target;
-        if (target < file_size) boundaries.push_back(target + 1);
-    }
-    boundaries.push_back(file_size);
-
-    for (size_t t = 0; t < boundaries.size() - 1; ++t) {
-        size_t start = boundaries[t];
-        size_t end = boundaries[t + 1];
-        threads.emplace_back([data, start, end, &pat]() {
-            process_range(data, start, end, pat);
-        });
+    for (int ni = 0; ni < NN; ++ni) {
+        if (node_chunks[ni].empty()) continue; // no work for this node -> its cores idle
+        cpu_set_t mask = topo.masks[ni];
+        int nthreads = topo.cpu_count[ni];
+        for (int tI = 0; tI < nthreads; ++tI) {
+            threads.emplace_back([ni, &node_chunks, &node_index, &pat, mask]() {
+                cpu_set_t m = mask;
+                sched_setaffinity(0, sizeof(m), &m); // keep this thread on its node
+                auto& q = node_chunks[ni];
+                auto& idx = node_index[ni];
+                for (;;) {
+                    size_t i = idx.fetch_add(1, std::memory_order_relaxed);
+                    if (i >= q.size()) break;
+                    process_range(q[i].data, q[i].start, q[i].end, pat);
+                }
+            });
+        }
     }
     for (auto& th : threads) th.join();
+}
+#endif // __linux__
+
+// ---------------------------------------------------------------------------
+// Mapping
+// ---------------------------------------------------------------------------
+struct FileMapping { char* data = nullptr; size_t size = 0; int fd = -1; };
+
+static FileMapping map_file(const std::string& filename) {
+    FileMapping fm;
+    fm.fd = open(filename.c_str(), O_RDONLY);
+    if (fm.fd == -1) return fm;
+    struct stat sb;
+    if (fstat(fm.fd, &sb) == -1 || sb.st_size <= 0) { close(fm.fd); fm.fd = -1; return fm; }
+    fm.size = static_cast<size_t>(sb.st_size);
+    fm.data = static_cast<char*>(mmap(nullptr, fm.size, PROT_READ, MAP_PRIVATE, fm.fd, 0));
+    if (fm.data == MAP_FAILED) { fm.data = nullptr; close(fm.fd); fm.fd = -1; return fm; }
+#ifdef __linux__
+    posix_fadvise(fm.fd, 0, fm.size, POSIX_FADV_SEQUENTIAL);
+    madvise(fm.data, fm.size, MADV_SEQUENTIAL);
+#endif
+    return fm;
 }
 
 int main(int argc, char** argv) {
@@ -316,7 +439,6 @@ int main(int argc, char** argv) {
 
     std::string query = argv[1];
     std::vector<std::string> files(argv + 2, argv + argc);
-    size_t num_files = files.size();
 
     Pattern pat = make_pattern(query.c_str(), query.length());
     if (pat.m == 0) return 0; // empty query matches nothing (preserves prior behavior)
@@ -324,80 +446,41 @@ int main(int argc, char** argv) {
     // single line, so it matches nothing (matches the original's per-line search).
     if (query.find('\n') != std::string::npos) return 0;
 
-    if (num_files == 1) {
-        search_file(files[0], pat, true);
-        return 0;
-    }
-
-    // Multi-file: unified chunk-based distribution across all cores.
     int num_cores = get_cpu_count();
-    size_t num_threads = static_cast<size_t>(num_cores);
+    size_t num_threads = num_cores > 0 ? static_cast<size_t>(num_cores) : 1;
 
-    struct FileMapping { char* data = nullptr; size_t size = 0; int fd = -1; };
+    // Map every file up front (works for the single-file case too).
     std::vector<FileMapping> mappings;
-    mappings.reserve(num_files);
+    mappings.reserve(files.size());
     size_t total_size = 0;
-
-    for (const auto& filename : files) {
-        FileMapping fm;
-        fm.fd = open(filename.c_str(), O_RDONLY);
-        if (fm.fd == -1) { mappings.push_back(fm); continue; }
-
-        struct stat sb;
-        if (fstat(fm.fd, &sb) == -1 || sb.st_size <= 0) {
-            close(fm.fd); fm.fd = -1; mappings.push_back(fm); continue;
-        }
-        fm.size = static_cast<size_t>(sb.st_size);
-
-        fm.data = static_cast<char*>(mmap(nullptr, fm.size, PROT_READ, MAP_PRIVATE, fm.fd, 0));
-        if (fm.data == MAP_FAILED) {
-            fm.data = nullptr; close(fm.fd); fm.fd = -1; mappings.push_back(fm); continue;
-        }
-#ifdef __linux__
-        posix_fadvise(fm.fd, 0, fm.size, POSIX_FADV_SEQUENTIAL);
-        madvise(fm.data, fm.size, MADV_SEQUENTIAL);
-#endif
-        total_size += fm.size;
+    for (const auto& f : files) {
+        FileMapping fm = map_file(f);
+        if (fm.data) total_size += fm.size;
         mappings.push_back(fm);
     }
 
-    struct WorkChunk { const char* data; size_t start; size_t end; };
-    std::vector<WorkChunk> chunks;
+    if (total_size == 0) { /* nothing readable */ }
+    else if (total_size < 100 * 1024 * 1024 || num_threads <= 1) {
+        // Small aggregate size (or single core): process each file sequentially.
+        for (auto& fm : mappings)
+            if (fm.data) process_range(fm.data, 0, fm.size, pat);
+    } else {
+        // Build line-aligned chunks across all files. Aim for several chunks per
+        // core so load balances within a node; floor keeps per-chunk overhead low.
+        size_t target = total_size / (num_threads * 4);
+        if (target < 8 * 1024 * 1024) target = 8 * 1024 * 1024;
+        std::vector<WorkChunk> chunks;
+        for (auto& fm : mappings)
+            if (fm.data) build_chunks(fm.data, fm.size, target, chunks);
 
-    size_t target_chunk_bytes = (num_threads > 0) ? total_size / num_threads : total_size;
-    if (target_chunk_bytes < 1024 * 1024) target_chunk_bytes = 1024 * 1024;
-
-    for (size_t fi = 0; fi < mappings.size(); ++fi) {
-        auto& fm = mappings[fi];
-        if (!fm.data || fm.size == 0) continue;
-
-        size_t file_chunks = std::max<size_t>(1, (fm.size + target_chunk_bytes / 2) / target_chunk_bytes);
-        size_t chunk_size = fm.size / file_chunks;
-
-        size_t prev = 0;
-        for (size_t c = 1; c < file_chunks; ++c) {
-            size_t target = c * chunk_size;
-            while (target < fm.size && fm.data[target] != '\n') ++target;
-            if (target < fm.size) { chunks.push_back({fm.data, prev, target + 1}); prev = target + 1; }
-        }
-        chunks.push_back({fm.data, prev, fm.size});
+#ifdef __linux__
+        NumaTopo topo = detect_numa();
+        if (topo.usable()) run_numa(chunks, topo, pat);
+        else               run_flat(chunks, num_threads, pat);
+#else
+        run_flat(chunks, num_threads, pat);
+#endif
     }
-
-    std::atomic<size_t> work_queue_index{0};
-    size_t actual_threads = std::min(num_threads, chunks.size());
-    std::vector<std::thread> threads;
-
-    auto worker = [&chunks, &pat, &work_queue_index]() {
-        while (true) {
-            size_t ci = work_queue_index.fetch_add(1, std::memory_order_relaxed);
-            if (ci >= chunks.size()) break;
-            auto& c = chunks[ci];
-            process_range(c.data, c.start, c.end, pat);
-        }
-    };
-
-    for (size_t t = 0; t < actual_threads; ++t) threads.emplace_back(worker);
-    for (auto& th : threads) th.join();
 
     for (auto& fm : mappings) {
         if (fm.data) munmap(fm.data, fm.size);
