@@ -1,16 +1,16 @@
 
  Performance counter stats for './fff hoyoverse /srv/fastshare/txtlog_alien_751.txt':
 
-       23926329219      cycles                                                                
-       15223649454      instructions                     #    0.64  insn per cycle            
-         117594313      cache-references                                                      
-         105416446      cache-misses                     #   89.64% of all cache refs         
-         108124787      branch-misses                                                         
-            105189      page-faults                                                           
+    18,918,625,044      cycles                                                                
+       864,235,895      instructions                     #    0.05  insn per cycle            
+        52,290,354      cache-references                                                      
+        48,200,528      cache-misses                     #   92.18% of all cache refs         
+           880,597      branch-misses                                                         
+            62,986      page-faults                                                           
 
-       0.281565002 seconds time elapsed
+       0.169282264 seconds time elapsed
 
-       8.563736000 seconds user
-       1.337709000 seconds sys
+       6.330581000 seconds user
+       0.960633000 seconds sys
 
 

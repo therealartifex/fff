@@ -10,40 +10,47 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <atomic>
+#include <array>
 #include <iostream>
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <cstring>
+#include <cstdint>
 #include <thread>
 #include <mutex>
 
 #include <immintrin.h>
 
-// Global mutex for synchronized output
-std::mutex output_mutex;
+// ---------------------------------------------------------------------------
+// Output: one shared mutex, thread-local fixed-capacity buffers (manual length,
+// no value-initialization on append).
+// ---------------------------------------------------------------------------
+static std::mutex output_mutex;
 
-// Lock-free work queue index (used for chunk distribution)
-std::atomic<size_t> work_queue_index{0};
+constexpr size_t OUTPUT_BUFFER_SIZE = 1024 * 1024; // 1 MB
+thread_local std::vector<char> output_buffer;      // sized once to CAP; manual length
+thread_local size_t output_len = 0;
 
-// Thread-local reusable match positions vector
-thread_local std::vector<size_t> match_positions;
-
-// Thread-local output buffer for batched writes
-thread_local std::vector<char> output_buffer;
-constexpr size_t OUTPUT_BUFFER_SIZE = 1024 * 1024; // 1MB
-
-static inline void flush_output_buffer() {
-    if (output_buffer.empty()) return;
+static inline void out_flush() {
+    if (output_len == 0) return;
     std::lock_guard<std::mutex> lock(output_mutex);
-    fwrite(output_buffer.data(), 1, output_buffer.size(), stdout);
-    output_buffer.clear();
+    fwrite(output_buffer.data(), 1, output_len, stdout);
+    output_len = 0;
+}
+
+static inline void out_write_direct(const char* p, size_t len, bool add_nl) {
+    std::lock_guard<std::mutex> lock(output_mutex);
+    fwrite(p, 1, len, stdout);
+    if (add_nl) fputc('\n', stdout);
 }
 
 constexpr size_t ZMM_SIZE = 64;
 
-const char* RED = "\033[41m";
+const char* RED   = "\033[41m";
 const char* RESET = "\033[0m";
+constexpr size_t RED_LEN   = 5; // "\033[41m"
+constexpr size_t RESET_LEN = 4; // "\033[0m"
 
 bool use_color = isatty(STDOUT_FILENO);
 
@@ -63,221 +70,174 @@ static inline int get_cpu_count() {
 #endif
 }
 
-// BMH (Boyer-Moore-Horspool) for longer patterns with precomputed table
-static void search_bmh(const char* hay, size_t n, const char* pat, size_t m,
-                       const uint32_t* shift, std::vector<size_t>& res) {
-    res.clear();
-    if (m == 0 || n < m) return;
+// ---------------------------------------------------------------------------
+// Byte-frequency table (higher = more common in text/log data). Used to pick
+// the two rarest bytes of the pattern for the SIMD prefilter. Bytes not listed
+// (control chars, high-bit bytes typical of ids/hex/binary) stay 0 == rarest,
+// which is exactly what we want to filter on.
+// ---------------------------------------------------------------------------
+static std::array<uint8_t, 256> g_freq;
 
-    size_t i = 0;
-    while (i + m <= n) {
-        if (memcmp(hay + i, pat, m) == 0) {
-            res.push_back(i);
-            i += m;
-        } else {
-            i += shift[static_cast<unsigned char>(hay[i + m - 1])];
+static void init_freq_table() {
+    g_freq.fill(0);
+    // Rough ordering, most-common -> less-common. Exact values are not critical;
+    // the goal is only to avoid selecting very common bytes (space, e, t, ...).
+    const char* common = " etaoinsrhldcumfpgwybvkxjqz"
+                         "ETAOINSRHLDCUMFPGWYBVKXJQZ"
+                         "0123456789"
+                         ".,:/-_=\"'()[]{}<>|;@#&*+\\%$!?\t\r";
+    uint8_t rank = 255;
+    for (const char* c = common; *c; ++c) {
+        uint8_t b = static_cast<uint8_t>(*c);
+        if (g_freq[b] == 0) {           // first (most common) occurrence wins
+            g_freq[b] = rank;
+            if (rank > 1) --rank;
         }
     }
+    g_freq[static_cast<uint8_t>('\n')] = 255; // never filter on newline
 }
 
-// Build BMH shift table once
-static inline void build_bmh_table(const char* pat, size_t m, uint32_t* shift) {
-    for (int i = 0; i < 256; ++i) shift[i] = m;
-    for (size_t i = 0; i + 1 < m; ++i) {
-        shift[static_cast<unsigned char>(pat[i])] = m - 1 - i;
-    }
+// Precomputed pattern descriptor.
+struct Pattern {
+    const char* p = nullptr;
+    size_t m = 0;
+    size_t i1 = 0; // offset of rarest byte
+    size_t i2 = 0; // offset of second-rarest byte (== i1 when m == 1)
+};
+
+static Pattern make_pattern(const char* p, size_t m) {
+    Pattern pat{p, m, 0, 0};
+    if (m == 0) return pat;
+    // rarest byte
+    for (size_t k = 1; k < m; ++k)
+        if (g_freq[(uint8_t)p[k]] < g_freq[(uint8_t)pat.p[pat.i1]]) pat.i1 = k;
+    if (m == 1) { pat.i2 = pat.i1; return pat; }
+    // second-rarest byte at a different offset
+    pat.i2 = (pat.i1 == 0) ? 1 : 0;
+    for (size_t k = 0; k < m; ++k)
+        if (k != pat.i1 && g_freq[(uint8_t)p[k]] < g_freq[(uint8_t)p[pat.i2]]) pat.i2 = k;
+    return pat;
 }
 
-// Fast search for short patterns with AVX-512 prefilter
-static void search_short_fast(const char* hay, size_t n, const char* pat, size_t m,
-                              std::vector<size_t>& res) {
-    res.clear();
-    if (m == 0 || n < m) return;
+// ---------------------------------------------------------------------------
+// Line boundary helpers (operate within a thread's [lo, hi) range).
+// ---------------------------------------------------------------------------
+static inline size_t line_begin(const char* data, size_t s, size_t lo) {
+    while (s > lo && data[s - 1] != '\n') --s;
+    return s;
+}
+static inline size_t line_end(const char* data, size_t from, size_t hi) {
+    while (from < hi && data[from] != '\n') ++from;
+    return from; // index of '\n', or hi
+}
 
-    const unsigned char first = static_cast<unsigned char>(pat[0]);
-    __m512i firstv = _mm512_set1_epi8(static_cast<char>(first));
+// ---------------------------------------------------------------------------
+// Emit one matching line [ls, le) (le exclusive, points at '\n' or range end).
+// ---------------------------------------------------------------------------
+static inline void emit_plain(const char* data, size_t ls, size_t le) {
+    size_t len = le - ls;
+    size_t need = len + 1;
+    if (need > OUTPUT_BUFFER_SIZE) { out_flush(); out_write_direct(data + ls, len, true); return; }
+    if (output_len + need > OUTPUT_BUFFER_SIZE) out_flush();
+    char* buf = output_buffer.data() + output_len;
+    memcpy(buf, data + ls, len);
+    buf[len] = '\n';
+    output_len += need;
+}
 
-    uint64_t pat_prefix = 0;
-    memcpy(&pat_prefix, pat, std::min<size_t>(m, sizeof(uint64_t)));
-
-    size_t pos = 0;
-    while (pos <= n - m) {
-        size_t rel = ZMM_SIZE;
-        if (pos + ZMM_SIZE <= n) {
-            __mmask64 mask = _mm512_cmpeq_epi8_mask(
-                _mm512_loadu_si512(reinterpret_cast<const __m512i*>(hay + pos)), firstv);
-            if (mask) rel = __builtin_ctzll(mask);
-        } else {
-            const char* found = static_cast<const char*>(memchr(hay + pos, first, n - pos));
-            rel = found ? static_cast<size_t>(found - (hay + pos)) : (n - pos);
-        }
-        if (rel >= (n - pos)) break;
-        pos += rel;
-        if (pos > n - m) break;
-
-        uint64_t w = 0;
-        size_t to_copy = std::min<size_t>(m, sizeof(uint64_t));
-        memcpy(&w, hay + pos, to_copy);
-        if (w == pat_prefix) {
-            if (memcmp(hay + pos, pat, m) == 0) {
-                res.push_back(pos);
-                pos += m;
-            } else {
-                ++pos;
-            }
+static void emit_color(const char* data, size_t ls, size_t le, const Pattern& pat) {
+    thread_local std::string cline;
+    cline.clear();
+    const size_t m = pat.m;
+    size_t prev = ls, pos = ls;
+    while (pos + m <= le) {
+        if (data[pos + pat.i1] == pat.p[pat.i1] &&
+            data[pos + pat.i2] == pat.p[pat.i2] &&
+            memcmp(data + pos, pat.p, m) == 0) {
+            cline.append(data + prev, pos - prev);
+            cline.append(RED, RED_LEN);
+            cline.append(data + pos, m);
+            cline.append(RESET, RESET_LEN);
+            prev = pos + m;
+            pos += m;
         } else {
             ++pos;
         }
     }
+    cline.append(data + prev, le - prev);
+    cline.push_back('\n');
+
+    size_t len = cline.size();
+    if (len > OUTPUT_BUFFER_SIZE) { out_flush(); out_write_direct(cline.data(), len, false); return; }
+    if (output_len + len > OUTPUT_BUFFER_SIZE) out_flush();
+    memcpy(output_buffer.data() + output_len, cline.data(), len);
+    output_len += len;
 }
 
-// Hybrid search dispatcher
-static void find_all_matches(const char* data, size_t len, const char* query, size_t q_len,
-                             const uint32_t* bmh_shift, std::vector<size_t>& matches) {
-    if (q_len == 0 || len < q_len) { matches.clear(); return; }
-    if (q_len >= 8) {
-        search_bmh(data, len, query, q_len, bmh_shift, matches);
-    } else {
-        search_short_fast(data, len, query, q_len, matches);
-    }
+static inline void emit_line(const char* data, size_t ls, size_t le, const Pattern& pat) {
+    if (use_color) emit_color(data, ls, le, pat);
+    else           emit_plain(data, ls, le);
 }
 
-// Fused single-pass: find newlines in chunk and return offsets
-inline void find_newlines_in_chunk(const char* data, size_t chunk_start, size_t chunk_size, 
-                                    std::vector<size_t>& newlines) {
-    newlines.clear();
-    const __m512i nl_vec = _mm512_set1_epi8('\n');
-    size_t pos = 0;
-    
-    // Process 64-byte chunks with AVX-512
-    while (pos + ZMM_SIZE <= chunk_size) {
-        __m512i chunk = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(data + chunk_start + pos));
-        __mmask64 mask = _mm512_cmpeq_epi8_mask(chunk, nl_vec);
-        
+// ---------------------------------------------------------------------------
+// Single-pass search over a thread's line-aligned range [start, end).
+// Two-rare-byte AVX-512 prefilter; line boundaries derived lazily around each
+// verified match. After emitting a line, the scan jumps to the line end, so no
+// line is ever emitted twice and dense lines aren't re-scanned.
+// ---------------------------------------------------------------------------
+static void process_range(const char* data, size_t start, size_t end, const Pattern& pat) {
+    const size_t m = pat.m;
+    if (m == 0 || end < start || (end - start) < m) return;
+
+    if (output_buffer.size() != OUTPUT_BUFFER_SIZE) output_buffer.resize(OUTPUT_BUFFER_SIZE);
+
+    const __m512i v1 = _mm512_set1_epi8(pat.p[pat.i1]);
+    const __m512i v2 = _mm512_set1_epi8(pat.p[pat.i2]);
+
+    size_t pos = start;
+    // Main SIMD loop: both 64-byte loads and full verify stay in-bounds while
+    // pos + (m-1) + 64 <= end.
+    while (pos + (m - 1) + ZMM_SIZE <= end) {
+        __mmask64 mask =
+            _mm512_cmpeq_epi8_mask(_mm512_loadu_si512((const void*)(data + pos + pat.i1)), v1) &
+            _mm512_cmpeq_epi8_mask(_mm512_loadu_si512((const void*)(data + pos + pat.i2)), v2);
+
+        bool jumped = false;
         while (mask) {
-            unsigned long bit = __builtin_ctzll(mask);
-            newlines.push_back(chunk_start + pos + bit);
+            size_t s = pos + (size_t)__builtin_ctzll(mask);
+            if (memcmp(data + s, pat.p, m) == 0) {
+                size_t ls = line_begin(data, s, start);
+                size_t le = line_end(data, s + m, end);
+                emit_line(data, ls, le, pat);
+                pos = le;          // skip the rest of this line
+                jumped = true;
+                break;
+            }
             mask &= mask - 1;
         }
-        pos += ZMM_SIZE;
+        if (!jumped) pos += ZMM_SIZE;
     }
-    
-    // Handle remaining bytes in chunk
-    while (pos < chunk_size) {
-        if (data[chunk_start + pos] == '\n') {
-            newlines.push_back(chunk_start + pos);
+
+    // Scalar tail for the final < (m-1)+64 bytes.
+    while (pos + m <= end) {
+        if (data[pos + pat.i1] == pat.p[pat.i1] &&
+            data[pos + pat.i2] == pat.p[pat.i2] &&
+            memcmp(data + pos, pat.p, m) == 0) {
+            size_t ls = line_begin(data, pos, start);
+            size_t le = line_end(data, pos + m, end);
+            emit_line(data, ls, le, pat);
+            pos = le;
+        } else {
+            ++pos;
         }
-        ++pos;
     }
+
+    out_flush();
 }
 
-// Process and output a single line with matches
-static void process_line(const char* data, size_t line_start, size_t line_len, 
-                         const char* query, size_t q_len, const uint32_t* bmh_shift) {
-    if (line_len == 0) return;
-    
-    find_all_matches(data + line_start, line_len, query, q_len, bmh_shift, match_positions);
-    if (match_positions.empty()) return;
-    
-    // Calculate size upper bound (matches already in order from left-to-right scan)
-    constexpr size_t RED_LEN = 5;   // "\033[41m"
-    constexpr size_t RESET_LEN = 4; // "\033[0m"
-    size_t max_size = line_len + 1; // line + newline
-    if (use_color) {
-        max_size += match_positions.size() * (RED_LEN + RESET_LEN);
-    }
-    
-    // Write directly into output_buffer — no intermediate copy
-    size_t write_start = output_buffer.size();
-    output_buffer.resize(write_start + max_size);
-    char* buf = output_buffer.data() + write_start;
-    size_t pos = 0;
-    
-    size_t prev = line_start;
-    size_t line_end_pos = line_start + line_len;
-    
-    for (size_t rel_pos : match_positions) {
-        size_t s = line_start + rel_pos;
-        size_t l = q_len;
-        if (s < prev || s + l > line_end_pos) continue;
-        
-        if (s > prev) {
-            size_t len = s - prev;
-            memcpy(buf + pos, data + prev, len);
-            pos += len;
-        }
-        
-        if (use_color) {
-            memcpy(buf + pos, RED, RED_LEN);
-            pos += RED_LEN;
-        }
-        memcpy(buf + pos, data + s, l);
-        pos += l;
-        if (use_color) {
-            memcpy(buf + pos, RESET, RESET_LEN);
-            pos += RESET_LEN;
-        }
-        
-        prev = s + l;
-    }
-    
-    if (prev < line_end_pos) {
-        size_t len = line_end_pos - prev;
-        memcpy(buf + pos, data + prev, len);
-        pos += len;
-    }
-    buf[pos++] = '\n';
-    
-    // Trim to actual size written
-    output_buffer.resize(write_start + pos);
-    
-    if (output_buffer.size() >= OUTPUT_BUFFER_SIZE) {
-        flush_output_buffer();
-    }
-}
-
-// Process a range of the file (thread worker)
-static void process_file_range(const char* data, size_t start, size_t end, 
-                               const std::string& query, const uint32_t* bmh_shift) {
-    size_t q_len = query.length();
-    const size_t CHUNK_SIZE = 16 * 1024 * 1024;
-    
-    // Pre-allocate output buffer to avoid repeated reallocations
-    output_buffer.reserve(OUTPUT_BUFFER_SIZE + 65536);
-    
-    std::vector<size_t> newlines;
-    newlines.reserve(CHUNK_SIZE / 80);
-    
-    size_t file_pos = start;
-    size_t line_start = start;
-    
-    // Process assigned range in chunks
-    while (file_pos < end) {
-        size_t chunk_size = std::min(CHUNK_SIZE, end - file_pos);
-        
-        find_newlines_in_chunk(data, file_pos, chunk_size, newlines);
-        
-        for (size_t nl_offset : newlines) {
-            if (nl_offset >= end) break;
-            size_t line_len = nl_offset - line_start;
-            process_line(data, line_start, line_len, query.c_str(), q_len, bmh_shift);
-            line_start = nl_offset + 1;
-        }
-        
-        file_pos += chunk_size;
-    }
-    
-    // Handle final line in this range
-    if (line_start < end) {
-        size_t line_len = end - line_start;
-        process_line(data, line_start, line_len, query.c_str(), q_len, bmh_shift);
-    }
-    
-    // Flush remaining buffered output
-    flush_output_buffer();
-}
-
-// RAII wrapper for file descriptors
+// ---------------------------------------------------------------------------
+// RAII guards
+// ---------------------------------------------------------------------------
 struct FdGuard {
     int fd;
     explicit FdGuard(int fd) : fd(fd) {}
@@ -286,7 +246,6 @@ struct FdGuard {
     FdGuard& operator=(const FdGuard&) = delete;
 };
 
-// RAII wrapper for mmap regions
 struct MmapGuard {
     void* addr;
     size_t len;
@@ -296,11 +255,12 @@ struct MmapGuard {
     MmapGuard& operator=(const MmapGuard&) = delete;
 };
 
-void search_file(const std::string& filename, const std::string& query, bool use_internal_parallelization = true) {
+void search_file(const std::string& filename, const Pattern& pat,
+                 bool use_internal_parallelization = true) {
     int raw_fd = open(filename.c_str(), O_RDONLY);
     if (raw_fd == -1) return;
     FdGuard fd_guard(raw_fd);
-    
+
     struct stat sb;
     if (fstat(raw_fd, &sb) == -1 || sb.st_size <= 0) return;
     const size_t file_size = static_cast<size_t>(sb.st_size);
@@ -313,54 +273,37 @@ void search_file(const std::string& filename, const std::string& query, bool use
     madvise(data, file_size, MADV_SEQUENTIAL);
 #endif
 
-    size_t q_len = query.length();
-    
-    // Build BMH shift table once (for patterns >= 8 bytes)
-    uint32_t bmh_shift[256];
-    if (q_len >= 8) {
-        build_bmh_table(query.c_str(), q_len, bmh_shift);
-    }
-    
-    // Decide on parallelization strategy
     int num_cores = get_cpu_count();
     size_t num_threads = static_cast<size_t>(num_cores);
-    bool parallelize = use_internal_parallelization && 
-                       file_size >= 100 * 1024 * 1024 && 
+    bool parallelize = use_internal_parallelization &&
+                       file_size >= 100 * 1024 * 1024 &&
                        num_threads > 1;
-    
+
     if (!parallelize) {
-        // Sequential processing (small files or when called from work queue)
-        process_file_range(data, 0, file_size, query, bmh_shift);
-    } else {
-        // Large files: split into line-aligned chunks
-        size_t chunk_size = file_size / num_threads;
-        std::vector<std::thread> threads;
-        std::vector<size_t> boundaries;
-        boundaries.push_back(0);
-        
-        // Find line-aligned boundaries
-        for (size_t t = 1; t < num_threads; ++t) {
-            size_t target = t * chunk_size;
-            while (target < file_size && data[target] != '\n') {
-                ++target;
-            }
-            if (target < file_size) {
-                boundaries.push_back(target + 1);
-            }
-        }
-        boundaries.push_back(file_size);
-        
-        // Launch threads
-        for (size_t t = 0; t < boundaries.size() - 1; ++t) {
-            size_t start = boundaries[t];
-            size_t end = boundaries[t+1];
-            threads.emplace_back([data, start, end, &query, bmh_shift]() {
-                process_file_range(data, start, end, query, bmh_shift);
-            });
-        }
-        
-        for (auto& th : threads) th.join();
+        process_range(data, 0, file_size, pat);
+        return;
     }
+
+    // Large files: line-aligned chunks, one per core.
+    size_t chunk_size = file_size / num_threads;
+    std::vector<std::thread> threads;
+    std::vector<size_t> boundaries;
+    boundaries.push_back(0);
+    for (size_t t = 1; t < num_threads; ++t) {
+        size_t target = t * chunk_size;
+        while (target < file_size && data[target] != '\n') ++target;
+        if (target < file_size) boundaries.push_back(target + 1);
+    }
+    boundaries.push_back(file_size);
+
+    for (size_t t = 0; t < boundaries.size() - 1; ++t) {
+        size_t start = boundaries[t];
+        size_t end = boundaries[t + 1];
+        threads.emplace_back([data, start, end, &pat]() {
+            process_range(data, start, end, pat);
+        });
+    }
+    for (auto& th : threads) th.join();
 }
 
 int main(int argc, char** argv) {
@@ -369,31 +312,28 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    init_freq_table();
+
     std::string query = argv[1];
     std::vector<std::string> files(argv + 2, argv + argc);
     size_t num_files = files.size();
 
+    Pattern pat = make_pattern(query.c_str(), query.length());
+    if (pat.m == 0) return 0; // empty query matches nothing (preserves prior behavior)
+    // Line-oriented semantics: a pattern containing '\n' can never match within a
+    // single line, so it matches nothing (matches the original's per-line search).
+    if (query.find('\n') != std::string::npos) return 0;
+
     if (num_files == 1) {
-        search_file(files[0], query, true);
+        search_file(files[0], pat, true);
         return 0;
     }
 
-    // Multi-file: unified chunk-based distribution across all cores
+    // Multi-file: unified chunk-based distribution across all cores.
     int num_cores = get_cpu_count();
     size_t num_threads = static_cast<size_t>(num_cores);
-    size_t q_len = query.length();
 
-    uint32_t bmh_shift[256];
-    if (q_len >= 8) {
-        build_bmh_table(query.c_str(), q_len, bmh_shift);
-    }
-
-    // Open and mmap all files
-    struct FileMapping {
-        char* data = nullptr;
-        size_t size = 0;
-        int fd = -1;
-    };
+    struct FileMapping { char* data = nullptr; size_t size = 0; int fd = -1; };
     std::vector<FileMapping> mappings;
     mappings.reserve(num_files);
     size_t total_size = 0;
@@ -405,15 +345,13 @@ int main(int argc, char** argv) {
 
         struct stat sb;
         if (fstat(fm.fd, &sb) == -1 || sb.st_size <= 0) {
-            close(fm.fd); fm.fd = -1;
-            mappings.push_back(fm); continue;
+            close(fm.fd); fm.fd = -1; mappings.push_back(fm); continue;
         }
         fm.size = static_cast<size_t>(sb.st_size);
 
         fm.data = static_cast<char*>(mmap(nullptr, fm.size, PROT_READ, MAP_PRIVATE, fm.fd, 0));
         if (fm.data == MAP_FAILED) {
-            fm.data = nullptr; close(fm.fd); fm.fd = -1;
-            mappings.push_back(fm); continue;
+            fm.data = nullptr; close(fm.fd); fm.fd = -1; mappings.push_back(fm); continue;
         }
 #ifdef __linux__
         posix_fadvise(fm.fd, 0, fm.size, POSIX_FADV_SEQUENTIAL);
@@ -423,12 +361,7 @@ int main(int argc, char** argv) {
         mappings.push_back(fm);
     }
 
-    // Build line-aligned work chunks across all files, proportional to size
-    struct WorkChunk {
-        const char* data;
-        size_t start;
-        size_t end;
-    };
+    struct WorkChunk { const char* data; size_t start; size_t end; };
     std::vector<WorkChunk> chunks;
 
     size_t target_chunk_bytes = (num_threads > 0) ? total_size / num_threads : total_size;
@@ -445,38 +378,30 @@ int main(int argc, char** argv) {
         for (size_t c = 1; c < file_chunks; ++c) {
             size_t target = c * chunk_size;
             while (target < fm.size && fm.data[target] != '\n') ++target;
-            if (target < fm.size) {
-                chunks.push_back({fm.data, prev, target + 1});
-                prev = target + 1;
-            }
+            if (target < fm.size) { chunks.push_back({fm.data, prev, target + 1}); prev = target + 1; }
         }
         chunks.push_back({fm.data, prev, fm.size});
     }
 
-    // Distribute chunks across all cores via lock-free work queue
-    work_queue_index.store(0, std::memory_order_relaxed);
+    std::atomic<size_t> work_queue_index{0};
     size_t actual_threads = std::min(num_threads, chunks.size());
     std::vector<std::thread> threads;
 
-    auto worker = [&chunks, &query, &bmh_shift]() {
+    auto worker = [&chunks, &pat, &work_queue_index]() {
         while (true) {
             size_t ci = work_queue_index.fetch_add(1, std::memory_order_relaxed);
             if (ci >= chunks.size()) break;
             auto& c = chunks[ci];
-            process_file_range(c.data, c.start, c.end, query, bmh_shift);
+            process_range(c.data, c.start, c.end, pat);
         }
     };
 
-    for (size_t t = 0; t < actual_threads; ++t) {
-        threads.emplace_back(worker);
-    }
+    for (size_t t = 0; t < actual_threads; ++t) threads.emplace_back(worker);
     for (auto& th : threads) th.join();
 
-    // Cleanup mmaps and file descriptors
     for (auto& fm : mappings) {
         if (fm.data) munmap(fm.data, fm.size);
         if (fm.fd >= 0) close(fm.fd);
     }
-
     return 0;
 }
