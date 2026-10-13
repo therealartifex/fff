@@ -56,9 +56,17 @@ constexpr size_t RESET_LEN = 4; // "\033[0m"
 
 bool use_color = isatty(STDOUT_FILENO);
 
-// Cross-platform CPU count
+// Cross-platform CPU count. On Linux this is the number of CPUs this process
+// is allowed to run on (respects taskset/numactl/cgroup cpusets), not the
+// number of CPUs in the machine.
 static inline int get_cpu_count() {
 #ifdef __linux__
+    cpu_set_t allowed;
+    CPU_ZERO(&allowed);
+    if (sched_getaffinity(0, sizeof(allowed), &allowed) == 0) {
+        int n = CPU_COUNT(&allowed);
+        if (n > 0) return n;
+    }
     return get_nprocs();
 #elif defined(__APPLE__)
     int count;
@@ -265,10 +273,17 @@ static void build_chunks(const char* data, size_t size, size_t target_chunk_byte
     size_t prev = 0;
     for (size_t c = 1; c < file_chunks; ++c) {
         size_t target = c * chunk_size;
-        while (target < size && data[target] != '\n') ++target;
-        if (target < size) { chunks.push_back({data, prev, target + 1}); prev = target + 1; }
+        // A previous split already ran past this target (one line spans several
+        // targets): skip it rather than re-walking to the same newline.
+        if (target < prev) continue;
+        const char* nl = static_cast<const char*>(memchr(data + target, '\n', size - target));
+        if (!nl) break; // no newline in the rest of the file: later targets can't split either
+        size_t split = static_cast<size_t>(nl - data) + 1;
+        if (split >= size) break; // newline is the final byte: the tail chunk covers it
+        chunks.push_back({data, prev, split});
+        prev = split;
     }
-    chunks.push_back({data, prev, size});
+    if (prev < size) chunks.push_back({data, prev, size});
 }
 
 // Flat lock-free work queue across all chunks (used when NUMA is unavailable
@@ -330,6 +345,13 @@ static bool read_sysfs(const char* path, char* buf, size_t n) {
 
 static NumaTopo detect_numa() {
     NumaTopo t;
+    // Only CPUs this process may run on are workers. If the allowed mask can't
+    // be read, return no topology so the caller uses the flat queue, whose
+    // threads simply inherit whatever affinity the process already has.
+    cpu_set_t allowed;
+    CPU_ZERO(&allowed);
+    if (sched_getaffinity(0, sizeof(allowed), &allowed) != 0) return t;
+
     char buf[8192];
     if (!read_sysfs("/sys/devices/system/node/online", buf, sizeof(buf))) return t;
     std::vector<int> online;
@@ -340,12 +362,16 @@ static NumaTopo detect_numa() {
         if (!read_sysfs(path, buf, sizeof(buf))) continue;
         std::vector<int> cpus;
         parse_int_list(buf, cpus);
-        if (cpus.empty()) continue; // CPU-less node (e.g. PMEM/GPU): never a worker
         cpu_set_t set; CPU_ZERO(&set);
-        for (int c : cpus) if (c >= 0 && c < CPU_SETSIZE) CPU_SET(c, &set);
+        for (int c : cpus)
+            if (c >= 0 && c < CPU_SETSIZE && CPU_ISSET(c, &allowed)) CPU_SET(c, &set);
+        int n = CPU_COUNT(&set);
+        // CPU-less nodes (PMEM/GPU) and nodes outside the allowed mask are never
+        // workers; chunks whose pages live there are spread over worker nodes.
+        if (n == 0) continue;
         t.node_ids.push_back(nd);
         t.masks.push_back(set);
-        t.cpu_count.push_back((int)cpus.size());
+        t.cpu_count.push_back(n);
     }
     return t;
 }
@@ -408,12 +434,15 @@ static void run_numa(std::vector<WorkChunk>& chunks, const NumaTopo& topo, const
     std::vector<std::thread> threads;
     for (int ni = 0; ni < NN; ++ni) {
         if (node_chunks[ni].empty()) continue; // no work for this node -> its cores idle
-        cpu_set_t mask = topo.masks[ni];
-        int nthreads = topo.cpu_count[ni];
-        for (int tI = 0; tI < nthreads; ++tI) {
+        cpu_set_t mask = topo.masks[ni]; // already intersected with the allowed mask
+        // One worker per allowed CPU on the node, but never more than its chunks.
+        size_t nthreads = std::min((size_t)topo.cpu_count[ni], node_chunks[ni].size());
+        for (size_t tI = 0; tI < nthreads; ++tI) {
             threads.emplace_back([ni, &node_chunks, &node_index, &pat, mask]() {
                 cpu_set_t m = mask;
-                sched_setaffinity(0, sizeof(m), &m); // keep this thread on its node
+                // Keep this thread on its node. If pinning fails, the thread keeps
+                // the process's inherited affinity: still correct, just unpinned.
+                (void)sched_setaffinity(0, sizeof(m), &m);
                 auto& q = node_chunks[ni];
                 auto& idx = node_index[ni];
                 for (;;) {

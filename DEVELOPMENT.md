@@ -153,9 +153,6 @@ Replaced per-line mutex-locked `fwrite` (24,477 locks) with thread-local 1 MB ou
   status as proof of a successful complete scan.
 - Empty queries match nothing, newline-containing queries match nothing, and
   final matching lines receive a newline even if the input had none.
-- Linux CPU counting ignores the process affinity mask. NUMA worker affinity
-  can widen a caller's `taskset` restriction, and worker counts use full node
-  CPU lists. Existing CPU-pinned benchmarks need rechecking on NUMA hosts.
 - Page residency sampling can be unavailable or unrepresentative of an entire
   chunk. No work stealing may leave cores idle on uneven node distributions.
 - Mapped files must not be truncated during a scan (possible SIGBUS).
