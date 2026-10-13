@@ -12,7 +12,7 @@ BENCHDIR = ./benchmarks
 QUERY ?= hoyoverse
 FILE ?= /srv/fastshare/txtlog_alien_751.txt
 
-.PHONY: all clean production pgo pgo-use \
+.PHONY: all clean production pgo pgo-use test \
         bench-hot bench-cold bench-vs-grep bench-before-after \
         bench-output-cost bench-perf bench-perf-llc bench-all \
         bench-hot-short bench-perf-short bench-perf-llc-short
@@ -31,6 +31,11 @@ pgo: $(SOURCES)
 pgo-use: $(SOURCES)
 	$(CXX) $(CXXFLAGS) -fprofile-use=$(PROFDIR) $(LDFLAGS) -o $(TARGET) $(SOURCES)
 	rm -rf $(PROFDIR)
+
+# Assertions must remain enabled even with the production -DNDEBUG flags.
+test:
+	$(CXX) $(CXXFLAGS) -UNDEBUG $(LDFLAGS) -o /tmp/fff-search-test tests/search_test.cpp
+	/tmp/fff-search-test
 
 # --- Benchmarks ---
 

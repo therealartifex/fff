@@ -117,12 +117,19 @@ static Pattern make_pattern(const char* p, size_t m) {
 // Line boundary helpers (operate within a thread's [lo, hi) range).
 // ---------------------------------------------------------------------------
 static inline size_t line_begin(const char* data, size_t s, size_t lo) {
+    const __m512i newline = _mm512_set1_epi8('\n');
+    while (s - lo >= ZMM_SIZE) {
+        const auto mask = _mm512_cmpeq_epi8_mask(
+            _mm512_loadu_si512(data + s - ZMM_SIZE), newline);
+        if (mask) return s - ZMM_SIZE + 64 - __builtin_clzll(mask);
+        s -= ZMM_SIZE;
+    }
     while (s > lo && data[s - 1] != '\n') --s;
     return s;
 }
 static inline size_t line_end(const char* data, size_t from, size_t hi) {
-    while (from < hi && data[from] != '\n') ++from;
-    return from; // index of '\n', or hi
+    const char* nl = static_cast<const char*>(memchr(data + from, '\n', hi - from));
+    return nl ? static_cast<size_t>(nl - data) : hi;
 }
 
 static inline void emit_plain(const char* data, size_t ls, size_t le) {
@@ -183,10 +190,23 @@ static void process_range(const char* data, size_t start, size_t end, const Patt
     const __m512i v2 = _mm512_set1_epi8(pat.p[pat.i2]);
 
     size_t pos = start;
-    while (pos + (m - 1) + ZMM_SIZE <= end) {
+    while (end - pos >= (m - 1) + ZMM_SIZE) {
         __mmask64 mask =
             _mm512_cmpeq_epi8_mask(_mm512_loadu_si512((const void*)(data + pos + pat.i1)), v1) &
             _mm512_cmpeq_epi8_mask(_mm512_loadu_si512((const void*)(data + pos + pat.i2)), v2);
+        // Batch the no-candidate case without extra loads on dense blocks.
+        // All loads stay inside the range, even for filter offsets at m - 1.
+        if (!mask && end - pos >= (m - 1) + 4 * ZMM_SIZE) {
+            __mmask64 combined = 0;
+            for (size_t block = 1; block < 4; ++block) {
+                const size_t at = pos + block * ZMM_SIZE;
+                combined |= _mm512_cmpeq_epi8_mask(
+                    _mm512_loadu_si512(data + at + pat.i1), v1) &
+                    _mm512_cmpeq_epi8_mask(
+                    _mm512_loadu_si512(data + at + pat.i2), v2);
+            }
+            if (!combined) { pos += 4 * ZMM_SIZE; continue; }
+        }
 
         bool jumped = false;
         while (mask) {
