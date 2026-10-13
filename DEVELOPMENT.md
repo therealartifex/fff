@@ -19,31 +19,28 @@ Outputs matching lines with query highlighted in red (when stdout is a terminal)
 
 ## Architecture (current state of `fff.cpp`)
 
-### Search Strategy
-- **Short patterns (<8 bytes):** AVX-512 first-byte prefilter with 64-byte vector compare, then `memcmp` verification
-- **Long patterns (≥8 bytes):** Boyer-Moore-Horspool with shift table built once per `search_file()` call
+### Search and output
+- Every nonempty, newline-free literal uses an AVX-512 two-byte prefilter;
+  the offsets are selected using a static byte-frequency heuristic.
+- A four-vector fast path skips 256 candidate positions when none pass the
+  filter. Candidate-bearing blocks and tails retain the 64-byte path and
+  `memcmp` verification. All instructions are available on Skylake-SP.
+- Matching lines are emitted once. Backward line boundaries use bounded
+  AVX-512 loads; forward boundaries use bounded `memchr`.
+- Output uses thread-local 1 MiB buffers with mutex-serialized flushes;
+  terminal output highlights nonoverlapping matches.
 
-### I/O
-- Files are `mmap`'d with `MAP_PRIVATE` + `posix_fadvise(POSIX_FADV_SEQUENTIAL)` + `madvise(MADV_SEQUENTIAL)`
-- Fused single-pass: newlines detected via AVX-512 in 16 MB chunks, lines searched immediately while data is cache-hot
+### I/O and scheduling
+- All input files are mapped upfront, with sequential access hints.
+- Below 100 MiB aggregate input, files are searched sequentially.
+- Larger inputs use line-aligned chunks, targeting four chunks per reported
+  CPU, with an 8 MiB floor. A flat atomic queue is used on one NUMA node.
+- On multiple NUMA nodes, three sampled pages per chunk select a node queue;
+  each node uses pinned workers without cross-node work stealing.
 
-### Parallelization (unified chunk-based)
-| Scenario | Strategy |
-|----------|----------|
-| 1 file | Split into line-aligned chunks across all available cores |
-| Multiple files | All files mmap'd upfront, split into line-aligned chunks proportional to size, distributed across all cores via lock-free work queue |
-
-For example, 24 files on a 72-core system: each file gets ~3 chunks, all 72 cores pull chunks from a single work queue.
-
-### Output
-- Matching lines written directly into a thread-local 1 MB output buffer (no intermediate staging)
-- Buffer flushed with a single mutex-locked `fwrite` when full or when a thread finishes its range
-- Color escape codes (`\033[41m` / `\033[0m`) added when `isatty(STDOUT_FILENO)` is true
-
-### Resource Management
-- RAII guards for file descriptors (`FdGuard`) and mmap regions (`MmapGuard`)
-- Lock-free `std::atomic<size_t>` work queue index for chunk distribution
-- Thread-local reusable vectors for match positions and output buffering
+The February results below describe historical implementations. For the current
+optimization and reproducible measurements, see
+[October 2026 review](benchmarks/performance-review-2026-10.md).
 
 ---
 
@@ -150,8 +147,18 @@ Replaced per-line mutex-locked `fwrite` (24,477 locks) with thread-local 1 MB ou
 
 ## Known Issues
 
-### Code Issues
-All previously identified issues have been resolved (see Completed Optimizations #8 for the full list).
+### Correctness and operational limitations
+- Input open/stat/mmap errors and output write failures are silent; the CLI
+  returns zero even when an input could not be searched. Do not treat its exit
+  status as proof of a successful complete scan.
+- Empty queries match nothing, newline-containing queries match nothing, and
+  final matching lines receive a newline even if the input had none.
+- Linux CPU counting ignores the process affinity mask. NUMA worker affinity
+  can widen a caller's `taskset` restriction, and worker counts use full node
+  CPU lists. Existing CPU-pinned benchmarks need rechecking on NUMA hosts.
+- Page residency sampling can be unavailable or unrepresentative of an entire
+  chunk. No work stealing may leave cores idle on uneven node distributions.
+- Mapped files must not be truncated during a scan (possible SIGBUS).
 
 ### Output Ordering
 - With multi-threading, output lines may be interleaved across threads (not in file order). This is typical for parallel grep tools but worth noting.
@@ -204,6 +211,11 @@ make pgo-use                    # Step 3: optimized build + cleanup
 ---
 
 ## Correctness Tests
+
+`make test` checks the search against a scalar literal reference, including
+inaccessible-page tails, binary bytes, chunk boundaries, and oversized lines.
+The test build explicitly enables assertions.
+
 
 ```bash
 # Small file
